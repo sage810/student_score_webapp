@@ -5,11 +5,26 @@
 ## 구조
 
 ```
-(아직 없음 — 파일이 생기는 대로 여기 채운다)
+student score webapp/
+├── Code.gs                 서버(Apps Script)
+├── appsscript.json         Apps Script 설정
+├── index.html              학생 화면
+├── teacher.html            교사 화면
+├── 수행평가_구글시트_*.xlsx  시트 예시 파일 2개
+├── .design/style-lock.md   확정된 디자인 값
+└── .claude/                작업 기록 (AGENTS_MAP.md, pending-changes.log)
 ```
 
 ## 파일별 설명
 
 | 경로 | 역할 |
 |---|---|
-| | |
+| Code.gs | 구글 시트와 화면 사이를 잇는 Apps Script 서버 코드. 시트 읽기·쓰기와 교사 비밀번호 검증을 맡음 |
+| appsscript.json | Apps Script 프로젝트 설정 파일 |
+| index.html | 학생용 화면. 학년·반·번호·이름으로 조회하고 결과를 표로 보여줌 |
+| teacher.html | index.html과 같은 색·글꼴을 쓰지만, 비밀번호 인증 뒤 명단·과목·영역·점수·결시를 관리하는 교사용 화면 |
+| 수행평가_구글시트_데모데이터.xlsx | [확인 필요] — 이름상 데모 데이터가 채워진 시트 예시로 보이나 용도 미확인 |
+| 수행평가_구글시트_빈템플릿.xlsx | [확인 필요] — 데모데이터 파일과 같은 구조의 빈 버전으로 보이나 용도 미확인 |
+| .design/style-lock.md | 확정된 색·글꼴·레이아웃 값 (design-system 스킬이 관리) |
+| .claude/AGENTS_MAP.md | 이 프로젝트에서 쓴 스킬 기록 |
+| .claude/pending-changes.log | 작업 중 남기는 변경 메모 (정리 후 비움) |
