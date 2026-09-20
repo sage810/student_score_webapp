@@ -176,8 +176,33 @@
   .subject-block{ margin-bottom:24px; }
   .subject-block:last-child{ margin-bottom:0; }
   .subject-heading{
+    display:flex; align-items:baseline; justify-content:space-between; gap:12px;
     font-size:15px; font-weight:800; color: var(--ink); margin-bottom:12px; letter-spacing:-0.2px;
   }
+  .subject-count{ font-size:12px; font-weight:700; color: var(--ink-soft); flex-shrink:0; }
+
+  /* 과목이 여러 개일 때: 옆으로 넘기는 카드 */
+  .carousel-nav{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:6px; }
+  .c-arrow{
+    width:34px; height:34px; border-radius:50%; border:1.5px solid var(--border); background: var(--surface);
+    color: var(--ink); font-size:20px; line-height:1; cursor:pointer; font-family:inherit;
+  }
+  .c-arrow:hover:not(:disabled){ border-color: var(--purple); color: var(--purple-dark); }
+  .c-arrow:disabled{ opacity:.35; cursor:not-allowed; }
+  .c-dots{ display:flex; align-items:center; gap:8px; }
+  .c-dot{
+    width:8px; height:8px; padding:0; border:none; border-radius:999px; background:#d4d4de; cursor:pointer;
+    transition: width .2s ease, background .2s ease;
+  }
+  .c-dot.active{ width:22px; background: var(--purple); }
+  .carousel-hint{ text-align:center; font-size:12px; color: var(--ink-soft); margin:0 0 12px; }
+  .subject-carousel{
+    display:flex; gap:16px; overflow-x:auto; scroll-snap-type:x mandatory; scroll-behavior:smooth;
+    padding:4px 2px 14px; margin:0 -2px; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+  }
+  .subject-carousel::-webkit-scrollbar{ display:none; }
+  .subject-carousel:focus-visible{ outline:2px solid var(--purple); outline-offset:4px; border-radius:12px; }
+  .subject-carousel .subject-block{ flex:0 0 100%; min-width:0; margin-bottom:0; scroll-snap-align:center; scroll-snap-stop:always; }
 
   .result-list{
     background: var(--surface); border-radius: var(--radius-lg);
@@ -636,21 +661,77 @@ function renderResult(res){
   document.getElementById('headTag').textContent = res.grade + '학년 ' + res.class + '반 ' + res.number + '번';
   document.getElementById('headNameText').textContent = res.name;
 
-  var showHeading = res.subjects.length > 1;
   var container = document.getElementById('subjectsContainer');
-  container.innerHTML = res.subjects.map(function(s){
-    return '<div class="subject-block">' +
-      (showHeading ? '<div class="subject-heading">' + escapeHtml(s.subject) + '</div>' : '') +
-      '<div class="result-list">' + buildResultListHtml(s.domains) + '</div>' +
-      '<div class="total-card">' +
-        '<div class="total-top"><div class="total-label">총점</div><div class="total-value">' +
-          s.total + (s.totalMax ? '<span class="of"> / ' + Number(s.totalMax) + '</span>' : '') +
-        '</div></div>' +
-        (s.declaredTotal ? '<div class="total-note">이 과목 총점은 ' + Number(s.declaredTotal) + '점 만점이에요</div>' : '') +
-      '</div>' +
-      '<div class="stat-row">' + buildStatRowHtml(s) + '</div>' +
-    '</div>';
+  var total = res.subjects.length;
+  container.innerHTML = total > 1 ? buildCarouselHtml(res.subjects) : buildSubjectHtml(res.subjects[0], '');
+  if (total > 1) setupCarousel(container);
+}
+
+function buildSubjectHtml(s, headingHtml){
+  return '<div class="subject-block">' +
+    (headingHtml || '') +
+    '<div class="result-list">' + buildResultListHtml(s.domains) + '</div>' +
+    '<div class="total-card">' +
+      '<div class="total-top"><div class="total-label">총점</div><div class="total-value">' +
+        s.total + (s.totalMax ? '<span class="of"> / ' + Number(s.totalMax) + '</span>' : '') +
+      '</div></div>' +
+      (s.declaredTotal ? '<div class="total-note">이 과목 총점은 ' + Number(s.declaredTotal) + '점 만점이에요</div>' : '') +
+    '</div>' +
+    '<div class="stat-row">' + buildStatRowHtml(s) + '</div>' +
+  '</div>';
+}
+
+// 과목이 여러 개면 옆으로 넘기는 카드 형식: 과목마다 한 장씩, 좌우로 밀거나 화살표·점을 눌러 넘긴다.
+function buildCarouselHtml(subjects){
+  var dots = subjects.map(function(s, i){
+    return '<button type="button" class="c-dot' + (i === 0 ? ' active' : '') + '" data-index="' + i +
+      '" aria-label="' + escapeHtml(s.subject) + ' 보기"></button>';
   }).join('');
+  var slides = subjects.map(function(s, i){
+    var heading = '<div class="subject-heading"><span>' + escapeHtml(s.subject) + '</span>' +
+      '<span class="subject-count">' + (i + 1) + ' / ' + subjects.length + '</span></div>';
+    return buildSubjectHtml(s, heading);
+  }).join('');
+  return '<div class="carousel-nav">' +
+      '<button type="button" class="c-arrow" data-dir="-1" aria-label="이전 과목">&lsaquo;</button>' +
+      '<div class="c-dots">' + dots + '</div>' +
+      '<button type="button" class="c-arrow" data-dir="1" aria-label="다음 과목">&rsaquo;</button>' +
+    '</div>' +
+    '<p class="carousel-hint">옆으로 넘겨서 다른 과목을 볼 수 있어요</p>' +
+    '<div class="subject-carousel" tabindex="0" aria-label="과목별 수행평가 결과">' + slides + '</div>';
+}
+
+function setupCarousel(container){
+  var track = container.querySelector('.subject-carousel');
+  var slides = Array.from(track.children);
+  var dots = Array.from(container.querySelectorAll('.c-dot'));
+  var prev = container.querySelector('.c-arrow[data-dir="-1"]');
+  var next = container.querySelector('.c-arrow[data-dir="1"]');
+  var current = 0;
+
+  function goTo(i){
+    i = Math.max(0, Math.min(slides.length - 1, i));
+    track.scrollTo({ left: slides[i].offsetLeft - track.offsetLeft, behavior: 'smooth' });
+  }
+  function sync(){
+    var i = 0, best = Infinity;
+    slides.forEach(function(sl, idx){
+      var d = Math.abs((sl.offsetLeft - track.offsetLeft) - track.scrollLeft);
+      if (d < best){ best = d; i = idx; }
+    });
+    current = i;
+    dots.forEach(function(d, idx){ d.classList.toggle('active', idx === i); });
+    prev.disabled = i === 0;
+    next.disabled = i === slides.length - 1;
+  }
+  track.addEventListener('scroll', function(){
+    clearTimeout(sync._t);
+    sync._t = setTimeout(sync, 40);
+  });
+  prev.addEventListener('click', function(){ goTo(current - 1); });
+  next.addEventListener('click', function(){ goTo(current + 1); });
+  dots.forEach(function(d){ d.addEventListener('click', function(){ goTo(Number(d.dataset.index)); }); });
+  sync();
 }
 
 gs.withSuccessHandler(initRoster).withFailureHandler(function(){

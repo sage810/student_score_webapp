@@ -1073,11 +1073,59 @@ function showToast(msg, isError){
   clearTimeout(showToast._timer);
   showToast._timer = setTimeout(function(){ t.className = 'toast'; }, 2400);
 }
+var btnIdleWaiters = {}; // 저장 버튼이 다시 눌릴 수 있게 되면(=저장 요청이 끝나면) 실행할 함수
 function setBtnLoading(btn, loading, labelWhenIdle){
   btn.disabled = loading;
   btn.querySelector('.spinner').hidden = !loading;
   btn.querySelector('.btn-label').textContent = loading ? '저장 중...' : labelWhenIdle;
+  if (!loading && btnIdleWaiters[btn.id]){
+    var waiter = btnIdleWaiters[btn.id];
+    delete btnIdleWaiters[btn.id];
+    setTimeout(waiter, 0); // 성공 처리(변경사항 표시 지우기)가 끝난 뒤에 확인하도록 한 박자 늦춘다
+  }
 }
+
+/* ---- 저장하지 않은 변경사항 ----
+   화면에서 값을 고치거나 추가·삭제하면 그 섹션을 "변경됨"으로 기록하고, 저장 성공이나 새로 불러오기 때 지운다. */
+var dirty = { attendance:false, scores:false, roster:false, domains:false, config:false };
+var DIRTY_SAVE_ORDER = ['attendance', 'scores', 'roster', 'domains', 'config']; // 화면을 다시 불러오는 저장(영역·과목 설정)은 마지막에
+var DIRTY_SAVE_BTN = { attendance:'saveAttendanceBtn', scores:'saveScoresBtn', roster:'saveRosterBtn', domains:'saveDomainsBtn', config:'saveConfigBtn' };
+function markDirty(key){ dirty[key] = true; }
+function clearDirty(key){ dirty[key] = false; }
+function dirtyKeys(){ return DIRTY_SAVE_ORDER.filter(function(k){ return dirty[k]; }); }
+
+// 변경된 섹션의 저장 버튼을 차례로 눌러 모두 저장한다. 하나라도 저장되지 않으면 done(false).
+function saveAllDirty(done){
+  var keys = dirtyKeys();
+  (function next(){
+    if (keys.length === 0){ done(true); return; }
+    var key = keys.shift();
+    var btn = document.getElementById(DIRTY_SAVE_BTN[key]);
+    var finished = false;
+    var timer = setTimeout(function(){
+      if (finished) return;
+      finished = true; delete btnIdleWaiters[btn.id]; done(false);
+    }, 20000);
+    btnIdleWaiters[btn.id] = function(){
+      if (finished) return;
+      finished = true; clearTimeout(timer);
+      if (dirty[key]){ done(false); return; } // 저장 실패
+      next();
+    };
+    btn.click();
+    // 눌러도 저장이 시작되지 않았으면(입력 확인에서 걸렸거나 취소함) 여기서 멈춘다
+    if (btn.querySelector('.btn-label').textContent !== '저장 중...' && !finished){
+      finished = true; clearTimeout(timer); delete btnIdleWaiters[btn.id]; done(false);
+    }
+  })();
+}
+
+// 창을 닫거나 새로고침·이동할 때: 브라우저 기본 확인 창이 뜬다 (글자와 저장 동작은 브라우저가 막아 바꿀 수 없다)
+window.addEventListener('beforeunload', function(e){
+  if (dirtyKeys().length === 0) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
 function rangeArray(start, end){
   var arr = []; start = Number(start); end = Number(end);
   if (isNaN(start) || isNaN(end)) return arr;
@@ -1148,7 +1196,8 @@ topbarHome.addEventListener('keydown', function(e){
   if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); scrollToTop(); }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', function(){
+function doLogout(){
+  DIRTY_SAVE_ORDER.forEach(clearDirty);
   TEACHER_PW = '';
   currentConfig = null;
   document.getElementById('dashboard').hidden = true;
@@ -1158,6 +1207,20 @@ document.getElementById('logoutBtn').addEventListener('click', function(){
   document.getElementById('gateError').hidden = true;
   window.scrollTo(0, 0);
   pwInput.focus();
+}
+
+document.getElementById('logoutBtn').addEventListener('click', function(){
+  if (dirtyKeys().length === 0){ doLogout(); return; }
+  // 저장하지 않은 변경사항이 있으면 먼저 저장할지 묻는다.
+  if (confirm('저장되지 않은 변경사항이 있어요.\n변경사항을 저장하시겠습니까?')){
+    showToast('변경사항을 저장하는 중이에요...');
+    saveAllDirty(function(ok){
+      if (ok) doLogout();
+      else showToast('저장하지 못한 변경사항이 있어서 로그아웃하지 않았어요.', true);
+    });
+    return;
+  }
+  if (confirm('저장하지 않고 로그아웃할까요?\n저장하지 않은 변경사항은 사라져요.')) doLogout();
 });
 
 /* ---- 0. 비밀번호 게이트 ---- */
@@ -1207,6 +1270,7 @@ function onRosterConfigLoaded(){
   document.getElementById('addStudentBtn').hidden = true;
   document.getElementById('saveRosterBtn').disabled = true;
   currentRosterCtx = null;
+  clearDirty('roster');
   if (!currentConfig) return;
 
   // 학년은 항상 1·2·3학년 모두, 반은 구글 시트 "설정"의 N학년반수만큼 보여준다.
@@ -1238,6 +1302,7 @@ document.getElementById('loadRosterBtn').addEventListener('click', function(){
 
 function renderRosterList(res, g, c){
   currentRosterCtx = { grade:g, class:c };
+  clearDirty('roster');
   lastSavedRosterNumbers = res.students.map(function(s){ return String(s.number); });
   var list = document.getElementById('rosterList');
   list.innerHTML = '';
@@ -1264,12 +1329,15 @@ function addRosterRow(s){
     var ok = confirm((name ? '"' + name + '" 학생을' : '이 학생을') + ' 명단에서 삭제할까요?\n(저장을 눌러야 실제로 반영돼요)');
     if (!ok) return;
     row.remove();
+    markDirty('roster');
   });
   list.appendChild(row);
 }
 document.getElementById('addStudentBtn').addEventListener('click', function(){
   addRosterRow();
+  markDirty('roster');
 });
+document.getElementById('rosterList').addEventListener('input', function(){ markDirty('roster'); });
 document.getElementById('saveRosterBtn').addEventListener('click', function(){
   if (!currentRosterCtx) return;
   var btn = this;
@@ -1296,6 +1364,7 @@ document.getElementById('saveRosterBtn').addEventListener('click', function(){
     showToast('학생 명단이 저장됐어요.');
     document.getElementById('rosterSavedHint').textContent = '마지막 저장: 방금 전';
     lastSavedRosterNumbers = newNumbers;
+    clearDirty('roster');
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '저장');
     showToast('저장에 실패했어요. 다시 시도해주세요.', true);
@@ -1340,6 +1409,7 @@ function applyConfigToForm(cfg){
 }
 
 function renderSubjectList(subjects){
+  clearDirty('config'); // 서버에서 새로 불러온 값으로 다시 그리는 것이므로 변경사항 없음
   lastSavedSubjects = subjects.map(function(s){ return { id: s.id, name: s.name }; });
   var list = document.getElementById('subjectList');
   list.innerHTML = '';
@@ -1363,6 +1433,7 @@ function renderClassChips(chipRow){
       pairs.splice(i, 1);
       chipRow.dataset.pairs = JSON.stringify(pairs);
       renderClassChips(chipRow);
+      markDirty('config');
     });
   });
 }
@@ -1410,6 +1481,7 @@ function addSubjectItem(name, classPairs, id){
     if (!ok) return;
     item.remove();
     updateAddSubjectBtn();
+    markDirty('config');
   });
 
   var toggleBtn = item.querySelector('.class-toggle');
@@ -1428,6 +1500,7 @@ function addSubjectItem(name, classPairs, id){
     pairs.push({ grade:g, cls:c });
     chipRow.dataset.pairs = JSON.stringify(pairs);
     renderClassChips(chipRow);
+    markDirty('config');
   }
 
   var addRow = item.querySelector('.class-add-row');
@@ -1490,7 +1563,11 @@ function updateAddSubjectBtn(){
 }
 document.getElementById('addSubjectBtn').addEventListener('click', function(){
   addSubjectItem('', []);
+  markDirty('config');
 });
+document.getElementById('subjectList').addEventListener('input', function(){ markDirty('config'); });
+document.getElementById('cfgYear').addEventListener('change', function(){ markDirty('config'); });
+document.getElementById('cfgSemester').addEventListener('change', function(){ markDirty('config'); });
 
 function populateSubjectSelect(selectId, names, preferred){
   var sel = document.getElementById(selectId);
@@ -1536,6 +1613,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', function(){
     gs.withSuccessHandler(function(){
       setBtnLoading(btn, false, '저장');
       showToast('수업 과목이 저장됐어요.');
+      clearDirty('config');
       loadDashboard();
     }).withFailureHandler(function(){
       setBtnLoading(btn, false, '저장');
@@ -1615,6 +1693,7 @@ function updateMismatchBadge(){
 }
 
 function renderDomainList(domains){
+  clearDirty('domains');
   lastSavedDomains = domains.map(function(d){ return d.name; });
   var list = document.getElementById('domainList');
   list.innerHTML = '';
@@ -1645,6 +1724,7 @@ function addDomainRow(d){
   row.querySelector('.domain-del').addEventListener('click', function(){
     row.remove();
     hideMismatchBadge();
+    markDirty('domains');
   });
   list.appendChild(row);
   autosizeDomainRow(row);
@@ -1662,6 +1742,7 @@ function autosizeAllDomainTextareas(){
   document.querySelectorAll('#domainList .domain-row').forEach(autosizeDomainRow);
 }
 document.getElementById('domainList').addEventListener('input', function(e){
+  markDirty('domains');
   if (e.target.classList.contains('domain-max-input')) hideMismatchBadge();
   if (e.target.tagName === 'TEXTAREA'){
     if (e.target.value.indexOf('\n') !== -1) e.target.value = e.target.value.replace(/\n+/g, ' ');
@@ -1672,10 +1753,14 @@ document.getElementById('domainList').addEventListener('keydown', function(e){
   if (e.target.tagName === 'TEXTAREA' && e.key === 'Enter') e.preventDefault();
 });
 window.addEventListener('resize', autosizeAllDomainTextareas);
-document.getElementById('subjectTotalInput').addEventListener('input', hideMismatchBadge);
+document.getElementById('subjectTotalInput').addEventListener('input', function(){
+  hideMismatchBadge();
+  markDirty('domains');
+});
 document.getElementById('addDomainBtn').addEventListener('click', function(){
   addDomainRow();
   hideMismatchBadge();
+  markDirty('domains');
 });
 document.getElementById('saveDomainsBtn').addEventListener('click', function(){
   var btn = this;
@@ -1722,6 +1807,7 @@ document.getElementById('saveDomainsBtn').addEventListener('click', function(){
     gs.withSuccessHandler(function(){
       setBtnLoading(btn, false, '저장');
       showToast('수행 영역이 저장됐어요.');
+      clearDirty('domains');
       loadDashboard();
     }).withFailureHandler(function(){
       setBtnLoading(btn, false, '저장');
@@ -1739,6 +1825,7 @@ document.getElementById('attendanceSubjectSelect').addEventListener('change', fu
   onAttendanceSubjectChange();
 });
 function onAttendanceSubjectChange(){
+  clearDirty('attendance');
   document.getElementById('attendancePickGrade').innerHTML = '<option value="">선택</option>';
   document.getElementById('attendancePickClass').innerHTML = '<option value="">선택</option>';
   document.getElementById('attendanceTableBody').innerHTML =
@@ -1804,6 +1891,7 @@ document.getElementById('loadAttendanceBtn').addEventListener('click', function(
 });
 
 function renderAttendanceTable(res, subject, g, c){
+  clearDirty('attendance');
   // 영역 상태(완료/이번 수행/예정)는 수행 영역 관리에서 정한 그 반의 값을 그대로 쓴다.
   currentAttendanceCtx = { subject:subject, grade:g, class:c, domains:res.domains, statuses:res.statuses || {} };
   renderDomainMemos(res.domains, res.memos || {});
@@ -1925,7 +2013,10 @@ function readDomainMemos(){
   return out;
 }
 document.getElementById('attendanceDomainMemos').addEventListener('input', function(e){
-  if (e.target.tagName === 'TEXTAREA') autosizeMemo(e.target);
+  if (e.target.tagName === 'TEXTAREA'){
+    autosizeMemo(e.target);
+    markDirty('attendance');
+  }
 });
 
 // 영역별 상태(완료 / 이번 수행 / 예정)는 표 머리글의 각 영역 아래에서 고른다. 반마다 따로 저장된다.
@@ -1945,6 +2036,7 @@ document.getElementById('attendanceTableHead').addEventListener('change', functi
   currentAttendanceCtx.statuses[e.target.dataset.domain] = e.target.value;
   updateAttendanceStats();
   applyMemoFilter();
+  markDirty('attendance');
 });
 
 function updateAttendanceStats(){
@@ -1998,7 +2090,10 @@ function updateAbsentSummary(){
     '</div>';
 }
 document.getElementById('attendanceTableBody').addEventListener('change', function(e){
-  if (e.target.matches('input[data-domain]')) updateAbsentSummary();
+  if (e.target.matches('input[data-domain]')){
+    updateAbsentSummary();
+    markDirty('attendance');
+  }
 });
 
 document.getElementById('saveAttendanceBtn').addEventListener('click', function(){
@@ -2028,6 +2123,7 @@ document.getElementById('saveAttendanceBtn').addEventListener('click', function(
   gs.withSuccessHandler(function(){
     setBtnLoading(btn, false, '저장');
     showToast('응시·결시 현황이 저장됐어요.');
+    clearDirty('attendance');
     document.getElementById('attendanceSavedHint').textContent = '마지막 저장: 방금 전';
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '저장');
@@ -2041,6 +2137,7 @@ document.getElementById('scoreSubjectSelect').addEventListener('change', functio
   onScoreSubjectChange();
 });
 function onScoreSubjectChange(){
+  clearDirty('scores');
   document.getElementById('pickGrade').innerHTML = '<option value="">선택</option>';
   document.getElementById('pickClass').innerHTML = '<option value="">선택</option>';
   document.getElementById('scoreTableBody').innerHTML =
@@ -2107,6 +2204,7 @@ function buildColgroup(domainCount){
 }
 
 function renderScoreTable(res, subject, g, c){
+  clearDirty('scores');
   currentClassCtx = { subject:subject, grade:g, class:c, domains: res.domains };
   var table = document.getElementById('scoreTable');
   var existingColgroup = table.querySelector('colgroup');
@@ -2146,6 +2244,9 @@ function renderScoreTable(res, subject, g, c){
   document.getElementById('lastSavedHint').textContent = '';
 }
 
+document.getElementById('scoreTableBody').addEventListener('input', function(e){
+  if (e.target.matches('.score-cell input')) markDirty('scores');
+});
 document.getElementById('scoreTableBody').addEventListener('keydown', function(e){
   if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   var input = e.target;
@@ -2188,6 +2289,7 @@ document.getElementById('saveScoresBtn').addEventListener('click', function(){
   gs.withSuccessHandler(function(res){
     setBtnLoading(btn, false, '전체 저장');
     showToast('점수가 저장됐어요.');
+    clearDirty('scores');
     document.getElementById('lastSavedHint').textContent = '마지막 저장: 방금 전';
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '전체 저장');
