@@ -85,24 +85,41 @@
   .field-row .field{ flex:1; margin-bottom:0; min-width:0; }
   label{ display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:8px; }
 
-  select, input[type="text"]{
+  select, input[type="text"], .combo-btn{
     width:100%; padding:12px 16px; font-size:15px; font-family:inherit;
     border:1.5px solid var(--border); border-radius: var(--radius-md);
     background: var(--surface); color:var(--ink);
     appearance:none; -webkit-appearance:none;
     transition: border-color .15s ease, box-shadow .15s ease;
   }
-  select{
+  select, .combo-btn{
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23686b82'/></svg>");
     background-repeat:no-repeat; background-position: right 14px center;
     padding-right: 32px;
   }
-  select:disabled{ color: var(--ink-faint); background-color:#fafafc; cursor:not-allowed; }
-  select:focus, input:focus{
+  select:disabled, .combo-btn:disabled{ color: var(--ink-faint); background-color:#fafafc; cursor:not-allowed; }
+  select:focus, input:focus, .combo-btn:focus-visible{
     outline:none; border-color: var(--purple);
     box-shadow: 0 0 0 3px var(--purple-tint);
   }
   input::placeholder{ color: var(--ink-faint); }
+
+  /* 번호 드롭다운: 브라우저 기본 select는 열리는 방향을 고를 수 없어서, 항상 아래로 열리는 목록으로 대체 */
+  .combo{ position:relative; }
+  .combo-btn{ display:block; text-align:left; cursor:pointer; }
+  .combo-list[hidden]{ display:none; }
+  .combo-list{
+    position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:10;
+    max-height:240px; overflow-y:auto; margin:0; padding:4px; list-style:none;
+    background: var(--surface); border:1.5px solid var(--border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+  }
+  .combo-list li{
+    display:flex; align-items:center; min-height:44px; padding:0 12px;
+    border-radius:8px; font-size:15px; cursor:pointer;
+  }
+  .combo-list li:hover, .combo-list li.active{ background:#f1f1f6; }
+  .combo-list li[aria-selected="true"]{ background: var(--purple-tint); color: var(--purple-dark); font-weight:600; }
 
   .error-msg[hidden]{ display:none; }
   .error-msg{
@@ -277,8 +294,12 @@
             <select id="classSelect" required disabled><option value="">선택</option></select>
           </div>
           <div class="field">
-            <label for="numberSelect">번호</label>
-            <select id="numberSelect" required disabled><option value="">선택</option></select>
+            <label for="numberBtn">번호</label>
+            <div class="combo">
+              <button type="button" class="combo-btn" id="numberBtn" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="numberList" disabled>선택</button>
+              <ul class="combo-list" id="numberList" role="listbox" aria-label="번호" hidden></ul>
+              <select id="numberSelect" required disabled hidden><option value="">선택</option></select>
+            </div>
           </div>
         </div>
         <div class="field">
@@ -437,6 +458,90 @@ classSelect.addEventListener('change', function(){
   fillSelect(numberSelect, rosterOptions.byGrade[g].byClass[c], '선택');
   numberSelect.disabled = false;
 });
+
+/* 번호 드롭다운 (항상 아래로 열림). 값은 숨겨진 numberSelect 에 그대로 두고, 목록만 다시 그린다 */
+(function(){
+  var btn = document.getElementById('numberBtn');
+  var list = document.getElementById('numberList');
+  var activeIdx = -1;
+
+  function items(){ return Array.prototype.slice.call(list.children); }
+  function isOpen(){ return !list.hidden; }
+
+  function refresh(){
+    list.innerHTML = '';
+    Array.prototype.forEach.call(numberSelect.options, function(o, i){
+      if (!o.value) return;
+      var li = document.createElement('li');
+      li.id = 'numberOpt' + i;
+      li.setAttribute('role', 'option');
+      li.dataset.value = o.value;
+      li.textContent = o.textContent;
+      li.setAttribute('aria-selected', o.value === numberSelect.value ? 'true' : 'false');
+      list.appendChild(li);
+    });
+    btn.textContent = numberSelect.value || numberSelect.options[0].textContent;
+    btn.disabled = numberSelect.disabled;
+    if (numberSelect.disabled) close();
+  }
+
+  function setActive(i){
+    var els = items();
+    if (!els.length) return;
+    activeIdx = Math.max(0, Math.min(els.length - 1, i));
+    els.forEach(function(el, k){ el.classList.toggle('active', k === activeIdx); });
+    btn.setAttribute('aria-activedescendant', els[activeIdx].id);
+    els[activeIdx].scrollIntoView({ block:'nearest' });
+  }
+
+  function open(){
+    if (btn.disabled || !list.children.length) return;
+    list.hidden = false;
+    btn.setAttribute('aria-expanded', 'true');
+    var sel = items().findIndex(function(el){ return el.dataset.value === numberSelect.value; });
+    setActive(sel < 0 ? 0 : sel);
+    list.scrollIntoView({ block:'nearest' });
+  }
+
+  function close(){
+    list.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    btn.removeAttribute('aria-activedescendant');
+  }
+
+  function choose(value){
+    numberSelect.value = value;
+    numberSelect.dispatchEvent(new Event('change', { bubbles:true }));
+    refresh();
+    close();
+    btn.focus();
+  }
+
+  btn.addEventListener('click', function(){ isOpen() ? close() : open(); });
+  list.addEventListener('mousedown', function(e){ e.preventDefault(); }); /* 버튼의 포커스를 유지 */
+  list.addEventListener('click', function(e){
+    var li = e.target.closest('li');
+    if (li) choose(li.dataset.value);
+  });
+  btn.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      if (!isOpen()) open(); else setActive(activeIdx + (e.key === 'ArrowDown' ? 1 : -1));
+    } else if (e.key === 'Home' && isOpen()){ e.preventDefault(); setActive(0); }
+    else if (e.key === 'End' && isOpen()){ e.preventDefault(); setActive(items().length - 1); }
+    else if ((e.key === 'Enter' || e.key === ' ') && isOpen()){
+      e.preventDefault();
+      if (activeIdx >= 0) choose(items()[activeIdx].dataset.value);
+    } else if (e.key === 'Escape' && isOpen()){ e.preventDefault(); close(); }
+    else if (e.key === 'Tab'){ close(); }
+  });
+  document.addEventListener('click', function(e){
+    if (isOpen() && !e.target.closest('.combo')) close();
+  });
+
+  new MutationObserver(refresh).observe(numberSelect, { childList:true, attributes:true, attributeFilter:['disabled'] });
+  refresh();
+})();
 
 [gradeSelect, classSelect, numberSelect, nameInput].forEach(function(el){
   el.addEventListener('input', hideError);
