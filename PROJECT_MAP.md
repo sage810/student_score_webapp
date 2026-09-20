@@ -11,7 +11,7 @@ student score webapp/
 ├── index.html              학생 화면
 ├── teacher.html            교사 화면
 ├── 수행평가_구글시트_*.xlsx  시트 예시 파일 2개
-├── .design/style-lock.md   확정된 디자인 값
+├── .design/                확정된 디자인 값 (style-lock.md, design-tokens.css/json)
 └── .claude/                작업 기록 (AGENTS_MAP.md, pending-changes.log)
 ```
 
@@ -26,5 +26,7 @@ student score webapp/
 | 수행평가_구글시트_데모데이터.xlsx | 구글 드라이브에 올려 구글 시트로 바꿔 쓰는 시트 예시(과목·학생·점수가 채워진 체험용) |
 | 수행평가_구글시트_빈템플릿.xlsx | 위 파일과 같은 시트 구성에서 머리글·설정값만 남긴 실사용 시작용 |
 | .design/style-lock.md | 확정된 색·글꼴·레이아웃 값 (design-system 스킬이 관리) |
+| .design/design-tokens.css | style-lock.md와 같은 값을 CSS 변수로 옮긴 것. 다른 프로젝트에 붙여넣어 쓰는 용도 (화면 파일에는 아직 연결 안 됨) |
+| .design/design-tokens.json | design-tokens.css와 같은 값을 JS·Figma 등에서 읽기 쉬운 JSON으로 정리한 것 |
 | .claude/AGENTS_MAP.md | 이 프로젝트에서 쓴 스킬 기록 |
 | .claude/pending-changes.log | 작업 중 남기는 변경 메모 (정리 후 비움) |

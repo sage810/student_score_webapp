@@ -1,0 +1,176 @@
+/* ==========================================================================
+   Design Tokens — 수행평가 웹앱 (student score webapp)에서 쓴 값 그대로 정리
+   다른 프로젝트에서: 이 파일을 <style>에 붙여넣거나 <link>로 불러온 뒤, 아래 변수만 참조한다.
+   폰트는 Pretendard(CDN)를 함께 불러와야 한다:
+   <link rel="stylesheet" as="style" crossorigin
+     href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+   ========================================================================== */
+
+:root{
+  /* ---------- 색상: 브랜드 ---------- */
+  --purple:        #7132f5;               /* 포인트(버튼·배지·강조) */
+  --purple-dark:   #5741d8;               /* 포인트 hover, 보라색 글씨 */
+  --purple-tint:   rgba(133,91,251,0.12); /* 보라 배경 틴트(선택·포커스 링) */
+  --purple-tint-strong: rgba(133,91,251,0.20); /* 틴트 hover */
+
+  /* ---------- 색상: 글자 ---------- */
+  --ink:           #101114;               /* 본문 */
+  --ink-soft:      #686b82;               /* 보조 글자 (흰 배경 대비 4.5:1 이상) */
+  --ink-faint:     #727589;               /* 안내 문구(placeholder) 전용 */
+
+  /* ---------- 색상: 면·선 ---------- */
+  --bg:            #f7f7fb;               /* 페이지 배경 (순백 대신 은은한 오프화이트) */
+  --surface:       #ffffff;               /* 카드·입력칸 */
+  --surface-alt:   #fafafc;               /* 표 머리글·보조 패널 */
+  --surface-hover: #fbfaff;               /* 표 행 hover */
+  --neutral-fill:  #f1f1f6;               /* 보조 버튼·'예정' 배경 */
+  --border:        #dedee5;               /* 테두리·구분선 */
+  --dot-inactive:  #d4d4de;               /* 캐러셀 점(비활성) */
+
+  /* ---------- 색상: 상태 ---------- */
+  --green:         #149e61;               /* 완료 (테두리·아이콘) */
+  --green-ink:     #0b6b41;               /* 완료 글씨 (초록 틴트 위에서 대비 확보) */
+  --green-tint:    rgba(20,158,97,0.14);
+  --red:           #c62f42;               /* 에러·결시·삭제 */
+  --red-tint:      rgba(198,47,66,0.10);
+
+  /* 의미별 별칭: 상태 이름으로 쓰고 싶을 때 */
+  --status-done-bg:       var(--green-tint);
+  --status-done-border:   var(--green);
+  --status-done-text:     var(--green-ink);
+  --status-current-bg:    var(--purple);        /* 이번 수행: 가장 진하게 */
+  --status-current-border:var(--purple-dark);
+  --status-current-text:  #ffffff;
+  --status-upcoming-bg:   var(--neutral-fill);
+  --status-upcoming-border:var(--border);
+  --status-upcoming-text: var(--ink-soft);
+  --status-absent-bg:     var(--red-tint);
+  --status-absent-text:   var(--red);
+
+  /* ---------- 상단 고정 바(어두운 헤더) ---------- */
+  --topbar-bg:        var(--ink);
+  --topbar-text:      #ffffff;
+  --topbar-text-dim:  rgba(255,255,255,0.60);   /* 비활성 메뉴 */
+  --topbar-line:      rgba(255,255,255,0.40);   /* 로그아웃 버튼 테두리 */
+
+  /* ---------- 타이포 ---------- */
+  --font-sans: 'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --fs-2xs: 10px;    /* 배점 등 아주 작은 보조 글자 */
+  --fs-xs:  11.5px;  /* 표 머리글 */
+  --fs-sm:  12.5px;  /* 라벨·힌트·작은 버튼 */
+  --fs-md:  13.5px;  /* 버튼·보조 본문 */
+  --fs-base:14px;    /* 입력칸·본문 */
+  --fs-lg:  16px;    /* 상단 바 제목 */
+  --fs-xl:  19px;    /* 인증 화면 제목 */
+  --fs-2xl: 22px;    /* 학생 화면 타이틀 */
+  --fs-total: 34px;  /* 결과 총점 */
+
+  --fw-regular: 400;
+  --fw-medium:  600;
+  --fw-bold:    700;
+  --fw-heavy:   800;
+
+  --lh-tight:  1.3;
+  --lh-normal: 1.5;
+  --tracking-title: -0.3px;   /* 큰 제목 자간 */
+
+  /* ---------- 간격: 4px 배수 (2px 반 단계 허용) ---------- */
+  --space-0-5: 2px;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --page-gutter: 16px;        /* 화면 양옆 최소 여백 */
+
+  /* ---------- 모서리 ---------- */
+  --radius-sm:   6px;    /* 작은 링크·포커스 영역 */
+  --radius-ctl:  10px;   /* 입력칸·버튼·드롭다운 */
+  --radius-md:   12px;   /* 패널·목록 상자 */
+  --radius-lg:   20px;   /* 카드 */
+  --radius-pill: 999px;  /* 알약(배지·학년 탭·점) */
+
+  /* ---------- 그림자 ---------- */
+  --shadow-card:   0 4px 24px rgba(16,17,20,0.06);
+  --shadow-bar:    0 -6px 20px rgba(16,17,20,0.06);   /* 하단 고정 바 */
+  --focus-ring:    0 0 0 3px var(--purple-tint);      /* 입력칸 포커스 */
+
+  /* ---------- 선·크기 ---------- */
+  --border-width:  1px;
+  --border-width-ctl: 1.5px;   /* 입력칸·버튼 테두리 */
+  --touch-min:     44px;       /* 버튼·탭 최소 터치 영역 */
+  --touch-min-small: 24px;     /* 체크박스·칩 × 버튼 최소 */
+  --content-max-student: 520px;/* 학생 화면 카드 폭 */
+  --content-max-admin:   980px;/* 교사 화면 본문 폭 */
+
+  /* ---------- 움직임 ---------- */
+  --ease: ease;
+  --dur-fast: .15s;    /* hover·포커스 */
+  --dur-base: .35s;    /* 화면 전환(fadeUp) */
+
+  /* ---------- 겹침 순서 ---------- */
+  --z-table-head: 2;
+  --z-topbar:     25;
+  --z-bottom-bar: 30;
+}
+
+/* 화면 폭 기준 (CSS 변수는 미디어쿼리에 못 써서 값만 기록):
+   1100px 이하 = 상단 메뉴 글자·간격 축소, 780px 이하 = 메뉴 3열 격자, 720px 이하 = 하단 바 세로 배치,
+   640px 이하 = 입력 줄이 세로로 쌓임 */
+
+/* ---------- 공통 리셋·바탕 (선택 사항) ---------- */
+*{ box-sizing:border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  font-family: var(--font-sans);
+  color: var(--ink);
+  background: var(--bg);
+}
+
+/* 학생 화면처럼 은은한 보라 빛 번짐 배경을 쓰고 싶을 때 body에 덧붙인다 */
+.bg-glow{
+  background:
+    radial-gradient(circle at 12% 8%,  rgba(113,50,245,0.08), transparent 40%),
+    radial-gradient(circle at 90% 85%, rgba(113,50,245,0.06), transparent 45%),
+    var(--bg);
+}
+
+/* ---------- 자주 쓴 컴포넌트 레시피 (토큰만으로 조합) ---------- */
+.card{
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  border: var(--border-width) solid var(--border);
+}
+.field-input{                     /* input / select / textarea 공통 */
+  width:100%; padding:10px 12px; font-size:var(--fs-base); font-family:inherit;
+  border: var(--border-width-ctl) solid var(--border); border-radius: var(--radius-ctl);
+  background: var(--surface); color: var(--ink);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+.field-input:focus{ outline:none; border-color: var(--purple); box-shadow: var(--focus-ring); }
+.field-input::placeholder{ color: var(--ink-faint); }
+.btn-primary{
+  padding:10px 20px; font-size:var(--fs-md); font-weight:var(--fw-bold); font-family:inherit;
+  color:#fff; background: var(--purple); border:none; border-radius: var(--radius-ctl); cursor:pointer;
+}
+.btn-primary:hover{ background: var(--purple-dark); }
+.btn-primary:disabled{ opacity:.6; cursor:not-allowed; }
+.btn-secondary{
+  padding:10px 18px; font-size:var(--fs-md); font-weight:var(--fw-bold); font-family:inherit;
+  color: var(--ink); background: var(--neutral-fill); border:none; border-radius: var(--radius-ctl); cursor:pointer;
+}
+.pill-tab{                        /* 학년 탭·반 버튼 */
+  padding:8px 16px; border-radius: var(--radius-pill); border: var(--border-width-ctl) solid var(--border);
+  background: var(--surface); color: var(--ink-soft); font-size: var(--fs-sm); font-weight: var(--fw-bold); cursor:pointer;
+}
+.pill-tab:hover{ border-color: var(--purple); color: var(--purple-dark); }
+.pill-tab.active{ background: var(--purple); border-color: var(--purple); color:#fff; }
+.badge-error{
+  display:flex; align-items:center; gap:6px; padding:9px 12px; border-radius: var(--radius-ctl);
+  font-size: var(--fs-sm); font-weight: var(--fw-bold); color: var(--red); background: var(--red-tint);
+}
