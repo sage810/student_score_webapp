@@ -1,0 +1,2332 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>수행평가 관리</title>
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
+<style>
+  :root{
+    --purple: #7132f5;
+    --purple-dark: #5741d8;
+    --purple-tint: rgba(133,91,251,0.12);
+    --ink: #101114;
+    --ink-soft: #686b82;
+    --ink-faint: #9497a9;
+    --border: #dedee5;
+    --bg: #f7f7fb;
+    --surface: #ffffff;
+    --green: #149e61;
+    --green-tint: rgba(20,158,97,0.14);
+    --red: #c62f42;
+    --red-tint: rgba(198,47,66,0.1);
+    --radius-lg: 20px;
+    --radius-md: 12px;
+    --shadow-card: 0 4px 24px rgba(16,17,20,0.06);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    font-family:'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--ink);
+    padding-bottom: 88px; /* 하단 안내바 공간 */
+  }
+
+  #dashboard[hidden]{ display:none; }
+
+  .gate-wrap[hidden]{ display:none; }
+  .gate-wrap{
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:32px 16px;
+  }
+  .gate-wrap .credit{ margin:24px 0 0; }
+  .gate-card{
+    width:100%; max-width:360px; background: var(--surface); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); padding:32px 28px; text-align:center;
+  }
+  .gate-badge{
+    display:flex; align-items:center; justify-content:center; margin:0 auto 14px;
+    width:52px; height:52px; border-radius:16px; background: var(--purple-tint); color: var(--purple);
+  }
+  .gate-card h1{ font-size:19px; font-weight:800; margin:0 0 6px; letter-spacing:-0.3px; }
+  .gate-sub{ font-size:13px; color: var(--ink-soft); margin:0 0 22px; line-height:1.5; }
+  .gate-card input{ text-align:center; letter-spacing:0.1em; margin-bottom:10px; }
+  .gate-error{
+    font-size:12.5px; color: var(--red); background: var(--red-tint);
+    border-radius:10px; padding:9px 12px; margin-bottom:14px;
+  }
+  .gate-error[hidden]{ display:none; }
+  .gate-btn{
+    width:100%; padding:13px 16px; font-size:14.5px; font-weight:700; font-family:inherit;
+    color:#fff; background: var(--purple); border:none; border-radius: var(--radius-md); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  .gate-btn:hover{ background: var(--purple-dark); }
+  .gate-btn:disabled{ opacity:.7; cursor:not-allowed; }
+
+  .topbar{
+    background: var(--ink); color:#fff; position:sticky; top:0; z-index:25;
+    padding: 18px 24px; display:flex; align-items:center;
+  }
+  .topbar-title{ display:flex; align-items:center; gap:10px; flex-shrink:0; cursor:pointer; border-radius:10px; }
+  .topbar-title:focus-visible, .topbar-logout:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+  .topbar-logout{
+    margin-left:auto; flex-shrink:0; padding:6px 12px; border-radius:8px;
+    border:1px solid rgba(255,255,255,0.4); background:none; color:rgba(255,255,255,0.9);
+    font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer; white-space:nowrap;
+  }
+  .topbar-logout:hover{ background:rgba(255,255,255,0.14); color:#fff; }
+  .topbar-badge{
+    width:34px; height:34px; border-radius:10px; background: var(--purple);
+    display:flex; align-items:center; justify-content:center; font-size:16px;
+  }
+  .topbar h1{ font-size:16px; font-weight:700; margin:0; }
+
+  .topbar-nav{
+    display:flex; gap:20px; flex-wrap:wrap; justify-content:center;
+    position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
+  }
+  .topbar-nav button{
+    padding:2px 0; border:none; background:none;
+    color:rgba(255,255,255,0.6);
+    font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; white-space:nowrap;
+  }
+  .topbar-nav button:hover{ color:#fff; }
+  .topbar-nav button.active{ color:#fff; font-weight:700; }
+
+  .wrap{ max-width: 980px; margin: 0 auto; padding: 24px 20px 40px; }
+
+  .card{
+    background: var(--surface); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card); margin-bottom:24px; overflow:hidden;
+    scroll-margin-top:88px;
+  }
+  .card-head-btn{
+    width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px;
+    background:none; border:none; padding:24px; cursor:pointer; font-family:inherit; text-align:left;
+  }
+  .card-head-btn:hover{ background: var(--bg); }
+  .card-head-btn.open{ background: var(--bg); }
+  .card-head-left{ display:flex; flex-direction:column; gap:4px; }
+  .card-head-left h2{ font-size:16px; font-weight:700; margin:0; letter-spacing:-0.2px; }
+  .card-head-left .step-no{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:22px; height:22px; border-radius:7px; background:var(--purple-tint);
+    color:var(--purple-dark); font-size:12px; font-weight:800; margin-right:8px;
+  }
+  .card-desc{ font-size:12.5px; color:var(--ink-soft); }
+  .card-chevron{ color: var(--ink-faint); transition: transform .15s ease; flex-shrink:0; }
+  .card-head-btn.open .card-chevron{ transform: rotate(180deg); }
+  .card-body[hidden]{ display:none; }
+  .card-body{ padding:20px 24px 24px; }
+
+  label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:6px; }
+  select, input[type="text"], input[type="number"], input[type="password"], input[type="date"], textarea{
+    width:100%; padding:10px 12px; font-size:14px; font-family:inherit;
+    border:1.5px solid var(--border); border-radius: 10px;
+    background: var(--surface); color:var(--ink);
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  select:focus, input:focus, textarea:focus{
+    outline:none; border-color: var(--purple); box-shadow: 0 0 0 3px var(--purple-tint);
+  }
+
+  /* 수업 과목 설정 */
+  .config-grid{
+    display:grid; grid-template-columns: repeat(2, 1fr); gap:14px; margin-bottom:18px;
+  }
+  .field-label-row{ margin-bottom:8px; }
+  .subject-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:12px; }
+  .subject-item{ border:1.5px solid var(--border); border-radius:12px; padding:12px; }
+  .subject-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .subject-row input{ flex:1; }
+  .subject-hint{ font-size:12px; color:var(--ink-soft); margin-top:8px; }
+  .attendance-guide{ font-size:12.5px; font-weight:600; color:var(--ink-soft); margin:0 0 10px; }
+
+  .class-chip-row{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; min-height:0; }
+  .class-chip{
+    display:inline-flex; align-items:center; gap:5px; background: var(--purple-tint); color: var(--purple-dark);
+    font-size:12px; font-weight:700; padding:5px 6px 5px 10px; border-radius:999px;
+  }
+  .class-chip button{
+    background:none; border:none; color:inherit; cursor:pointer; font-size:13px; line-height:1;
+    padding:2px; display:flex; align-items:center;
+  }
+
+  .class-toggle{
+    width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background: var(--bg); border:1.5px solid var(--border); border-radius:10px;
+    padding:10px 12px; cursor:pointer; font-family:inherit; text-align:left;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .class-toggle:hover{ border-color: var(--purple); background: var(--purple-tint); }
+  .class-toggle-label{ font-size:12.5px; font-weight:700; color: var(--ink); }
+  .class-toggle-chevron{ color: var(--purple); transition: transform .15s ease; flex-shrink:0; }
+  .class-toggle.open{ border-color: var(--purple); background: var(--purple-tint); }
+  .class-toggle.open .class-toggle-chevron{ transform: rotate(180deg); }
+
+  .class-picker[hidden]{ display:none; }
+  .class-picker{ margin-top:8px; }
+
+  .grade-tabs{ display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  .grade-tab{
+    padding:8px 16px; border-radius:999px; border:1.5px solid var(--border); background:#fff;
+    color: var(--ink-soft); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  .grade-tab:hover:not(.active){ border-color: var(--purple); color: var(--purple-dark); }
+  .grade-tab.active{ background: var(--purple); border-color: var(--purple); color:#fff; }
+
+  .class-add-row[hidden]{ display:none; }
+  .class-add-row{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .class-quick-btns{ display:contents; }
+  /* 반 버튼은 학년 탭(.grade-tab)과 같은 알약 모양 */
+  .class-quick-btn{
+    flex:none; padding:8px 16px; border-radius:999px; border:1.5px solid var(--border); background:#fff;
+    color: var(--ink-soft); font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit;
+  }
+  .class-quick-btn:hover{ border-color: var(--purple); color: var(--purple-dark); }
+  .class-other-btn{
+    width:38px; height:34px; flex:none; border-radius:8px; border:1.5px dashed var(--border);
+    background:#fff; color: var(--ink-soft); font-size:16px; font-weight:700; cursor:pointer; line-height:1;
+  }
+  .class-other-btn[hidden]{ display:none; }
+  .class-other-btn:hover{ border-color: var(--purple); color: var(--purple-dark); background: var(--purple-tint); }
+  .class-add-row .class-add-custom{ width:66px; height:34px; flex:none; text-align:center; padding:0 4px; }
+  .class-add-custom[hidden]{ display:none; }
+  .class-add-btn{
+    flex-shrink:0; padding:0 12px; height:34px; font-size:12.5px; font-weight:700; font-family:inherit;
+    color: var(--purple-dark); background: var(--purple-tint); border:none; border-radius:9px; cursor:pointer;
+  }
+  .class-add-btn:hover{ background: rgba(133,91,251,0.2); }
+  .class-add-btn[hidden]{ display:none; }
+
+  /* 수행 영역 관리 */
+  .mismatch-badge{
+    display:flex; align-items:center; gap:6px;
+    font-size:12.5px; font-weight:700; color: var(--red); background: var(--red-tint);
+    border-radius:10px; padding:9px 12px; margin:0 0 14px;
+  }
+  .mismatch-badge::before{ content:"⚠"; font-size:13px; }
+  .mismatch-badge[hidden]{ display:none; }
+  .domain-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+  .domain-row{ display:flex; align-items:center; gap:8px; }
+  /* 영역명·하위 영역명은 글이 칸보다 길어지면 다음 줄로 넘어가면서 칸이 세로로 늘어난다 */
+  .domain-row textarea.domain-group-input, .domain-row textarea.domain-name-input{
+    resize:none; overflow:hidden; display:block; line-height:1.3; overflow-wrap:anywhere;
+  }
+  /* 영역명 칸과 하위 영역명 칸은 같은 크기 */
+  .domain-row .domain-name-input{ flex:1 1 0; min-width:0; }
+  .domain-row .domain-name-input::placeholder{ font-style:italic; }
+  .domain-row .domain-max-input{ width:76px; flex-shrink:0; }
+  .domain-row .domain-group-input{ flex:1 1 0; min-width:0; }
+  .domain-row-labels{ display:flex; gap:8px; margin-bottom:2px; }
+  .domain-row-labels span{ font-size:11px; font-weight:600; color:var(--ink-soft); }
+  /* 상태 태그: 완료=초록, 이번 수행=보라(가장 진하게), 예정=회색 */
+  select[data-status]{ font-weight:700; cursor:pointer; }
+  select[data-status] option{ background:#fff; color:var(--ink); font-weight:600; }
+  select[data-status="완료"]{ background:var(--green-tint); border-color:var(--green); color:#0b6b41; }
+  select[data-status="이번 수행"]{ background:var(--purple); border-color:var(--purple-dark); color:#fff; }
+  select[data-status="예정"]{ background:#f1f1f6; border-color:var(--border); color:var(--ink-soft); }
+  .domain-row-labels .lbl-name{ flex:1 1 0; }
+  .domain-row-labels .lbl-max{ width:76px; flex-shrink:0; }
+  .domain-row-labels .lbl-group{ flex:1 1 0; }
+    .domain-del, .subject-del, .roster-del{
+    width:40px; height:40px; flex-shrink:0; border-radius:9px; border:1.5px solid var(--border);
+    background:#fff; color:var(--ink-soft); cursor:pointer; font-size:15px; line-height:1;
+  }
+  .domain-del:hover, .subject-del:hover, .roster-del:hover{ border-color: var(--red); color: var(--red); background: var(--red-tint); }
+
+  /* 학생 명단 관리 */
+  .roster-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+  .roster-row{ display:flex; align-items:center; gap:8px; }
+  .roster-row .roster-num-input{ width:76px; flex-shrink:0; text-align:center; }
+  .roster-row .roster-name-input{ flex:1; min-width:0; }
+  .roster-row-labels{ display:flex; gap:8px; margin-bottom:2px; }
+  .roster-row-labels span{ font-size:11px; font-weight:600; color:var(--ink-soft); }
+  .roster-row-labels .lbl-roster-num{ width:76px; flex-shrink:0; text-align:center; }
+  .roster-row-labels .lbl-roster-name{ flex:1; }
+
+  /* 응시·결시 관리 */
+  td.attend-cell input[type="checkbox"]{ width:18px; height:18px; accent-color: var(--purple); cursor:pointer; }
+  td.attend-cell input[type="checkbox"]:checked{ accent-color: var(--red); }
+  .domain-memos[hidden]{ display:none; }
+  .domain-memos{ margin-top:16px; }
+  .domain-memos-head{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
+  .domain-memos-title{ font-size:12px; font-weight:600; color:var(--ink-soft); margin:0; }
+  .domain-memos-head .memo-filter{ width:auto; max-width:100%; padding:6px 10px; font-size:12.5px; }
+  .domain-memos-empty[hidden]{ display:none; }
+  .domain-memos-empty{ font-size:12.5px; color:var(--ink-soft); margin:0 0 8px; }
+  .domain-memo-row[hidden]{ display:none; }
+  .domain-memo-row{ display:flex; gap:10px; align-items:flex-start; margin-bottom:8px; }
+  .domain-memo-row .dm-name{
+    flex:0 0 200px; min-width:0; padding-top:11px; font-size:12.5px; font-weight:600; color:var(--ink);
+    word-break:keep-all; overflow-wrap:break-word; text-wrap:balance;
+  }
+  .domain-memo-row textarea{ flex:1; min-width:0; resize:none; overflow:hidden; line-height:1.3; display:block; }
+  @media (max-width:640px){
+    .domain-memo-row{ flex-direction:column; gap:4px; }
+    .domain-memo-row .dm-name{ flex:none; padding-top:0; }
+  }
+  .attend-stats-empty{ padding:14px; font-size:12.5px; color:var(--ink-soft); }
+  /* 기타 메모: 글이 길어지면 가로로 최대 4배(600px)까지 늘어나고, 그다음부터는 줄바꿈으로 세로가 늘어난다 */
+  /* 수행 영역 칸은 남는 가로 폭을 모두 써서 긴 영역명이 잘리지 않게 한다 */
+  .picker-row .field.notice-domain-field{ width:auto; flex:1 1 280px; min-width:0; }
+  .notice-domain-field select{ text-overflow:clip; }
+  .notice-memo-field{ max-width:100%; }
+  .notice-memo-field textarea{ resize:none; overflow:hidden; line-height:1.3; white-space:pre-wrap; overflow-wrap:anywhere; display:block; }
+  .notice-list{ border:1px solid var(--border); border-radius:12px; max-height:320px; overflow-y:auto; }
+  .notice-item{ display:flex; gap:10px; align-items:baseline; padding:8px 14px; border-bottom:1px solid var(--border); font-size:12.5px; color:var(--ink); }
+  .notice-item:last-child{ border-bottom:none; }
+  .notice-item .ni-domain{ flex:1; min-width:0; font-weight:700; overflow-wrap:break-word; }
+  .notice-item .ni-who{ flex-shrink:0; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
+  /* 결시자 수행안내 인쇄용 (A4 한 장 = 4×4칸). 화면에서는 숨기고 인쇄할 때만 보인다. */
+  #noticePrintArea{ display:none; }
+  .notice-page{
+    width:170mm; height:240mm; margin:0 auto; box-sizing:border-box;
+    display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(3, 1fr);
+    break-after:page; page-break-after:always; background:#fff;
+  }
+  .notice-page:last-child{ break-after:auto; page-break-after:auto; }
+  .notice-cell{
+    box-sizing:border-box; border:0.3mm dashed #555; padding:3.5mm 3mm;
+    display:flex; flex-direction:column; gap:1.6mm; overflow:hidden;
+    font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; color:#000; font-size:10pt; line-height:1.35;
+  }
+  .notice-cell.blank{ border-color:transparent; }
+  .nc-row{ display:flex; gap:1.5mm; }
+  .nc-row .nc-k{ flex-shrink:0; font-weight:700; }
+  .nc-row .nc-v{ min-width:0; overflow-wrap:anywhere; }
+  .nc-badge{ font-weight:700; font-size:10.5pt; margin:0.5mm 0; }
+  .nc-memo{ overflow-wrap:anywhere; white-space:pre-line; }
+  .nc-date{ font-weight:700; }
+  .nc-line{ display:flex; gap:1.5mm; align-items:flex-end; }
+  .nc-line .nc-fill{ flex:1; min-width:0; min-height:4mm; border-bottom:0.2mm solid #000; overflow-wrap:anywhere; }
+  .nc-class{ margin-top:auto; font-weight:700; }
+  .nc-name{ font-size:16pt; font-weight:800; }
+  @media print{
+    @page{ size:A4 portrait; margin:10mm; }
+    html, body{ background:#fff !important; margin:0; padding:0; }
+    body > *:not(#noticePrintArea){ display:none !important; }
+    #noticePrintArea{ display:block !important; }
+  }
+  /* 표 머리글의 영역별 상태 드롭다운 */
+  thead .status-head-row th{ background:#fff; padding:6px 4px; }
+  thead .status-head-label{ font-size:11px; color:var(--ink-soft); }
+  thead .status-head-cell .status-select{
+    width:100%; padding:5px 2px; font-size:11px; border-radius:8px; text-align:center; text-align-last:center;
+  }
+  .attend-stats:empty{ display:none; }
+  .attend-stats{ margin-top:16px; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+  .attend-stats-title{ margin:0; padding:10px 14px; font-size:13px; font-weight:700; color:var(--ink); background:#fafafc; border-bottom:1px solid var(--border); }
+  .attend-stats-row{ display:grid; grid-template-columns:1fr 84px 84px; align-items:center; border-bottom:1px solid var(--border); }
+  .attend-stats-row:last-child{ border-bottom:none; }
+  .attend-stats-row > span{ padding:8px 14px; font-size:12.5px; color:var(--ink); overflow-wrap:break-word; min-width:0; }
+  .attend-stats-row > span:not(:first-child){ text-align:center; border-left:1px solid var(--border); font-variant-numeric:tabular-nums; }
+  .attend-stats-row.head > span{ font-size:11.5px; font-weight:700; color:var(--ink-soft); }
+  .attend-stats-row .has-absent{ color:var(--red); font-weight:700; }
+  .absent-summary:empty{ display:none; }
+  .absent-summary{
+    margin-top:16px; padding:12px 14px; background: var(--red-tint); border-radius:12px;
+  }
+  .absent-summary-title{ font-size:12px; font-weight:700; color: var(--red); margin:0 0 8px; }
+  .absent-summary-list{ display:flex; flex-direction:column; gap:4px; }
+  .absent-summary-item{ font-size:12.5px; color: var(--ink); }
+  .absent-summary-item b{ color: var(--red); }
+  .absent-tag{
+    display:inline-block; font-size:11.5px; font-weight:700; color: var(--red); background: var(--red-tint);
+    border-radius:999px; padding:3px 10px;
+  }
+  td.score-cell.absent-cell{ background:#fdf5f5; }
+  .btn-dashed{
+    width:100%; padding:10px; font-size:13.5px; font-weight:600; font-family:inherit;
+    color: var(--purple-dark); background: var(--purple-tint); border: none;
+    border-radius: 10px; cursor:pointer;
+  }
+  .btn-dashed:hover{ background: rgba(133,91,251,0.2); }
+  .btn-dashed:disabled{ opacity:.5; cursor:not-allowed; }
+
+  .actions-row{ display:flex; justify-content:center; gap:10px; margin-top:16px; align-items:center; position:relative; }
+  .save-hint{ font-size:12px; color: var(--ink-soft); position:absolute; left:0; }
+  @media (max-width:640px){
+    .actions-row{ flex-direction:column; gap:8px; }
+    .save-hint{ position:static; }
+  }
+  .btn-primary{
+    padding:10px 20px; font-size:13.5px; font-weight:700; font-family:inherit;
+    color:#fff; background: var(--purple); border:none; border-radius: 10px; cursor:pointer;
+    display:inline-flex; align-items:center; gap:8px;
+  }
+  .btn-primary:hover{ background: var(--purple-dark); }
+  .btn-primary:disabled{ opacity:.6; cursor:not-allowed; }
+  .btn-secondary{
+    padding:10px 18px; font-size:13.5px; font-weight:700; font-family:inherit;
+    color: var(--ink); background: #f1f1f6; border:none; border-radius: 10px; cursor:pointer;
+  }
+  .btn-secondary:hover{ background:#e7e7ee; }
+
+  .spinner{
+    width:14px; height:14px; border-radius:50%;
+    border:2px solid rgba(255,255,255,0.4); border-top-color:#fff;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  /* 반별 점수 입력 표 */
+  .picker-row{ display:flex; gap:12px; align-items:flex-end; margin-bottom:18px; flex-wrap:wrap; }
+  .picker-row .field{ width:150px; }
+
+  .table-scroll{ overflow-y:auto; overflow-x:hidden; max-height:520px; border:1px solid var(--border); border-radius:14px; }
+  table{ border-collapse:separate; border-spacing:0; width:100%; table-layout:fixed; }
+  thead{ position:sticky; top:0; z-index:2; }
+  thead th{
+    background:#fafafc; text-align:center; vertical-align:middle;
+    font-size:11.5px; font-weight:700; color:var(--ink-soft); line-height:1.35;
+    padding:8px 4px; border-bottom:1px solid var(--border); border-left:1px solid var(--border);
+    /* 긴 글은 낱말(띄어쓰기) 단위로 다음 줄에 이어 쓰고, 줄 길이는 최대한 고르게 나눈다 */
+    overflow-wrap:break-word; word-break:keep-all; text-wrap:balance; max-width:0;
+  }
+  thead th:first-child{ border-left:none; }
+  /* 병합(rowspan) 때문에 둘째 줄의 첫 칸이 표의 첫 열이 아닌 경우에는 왼쪽 선을 그린다 */
+  thead th.th-sub{ border-left:1px solid var(--border); }
+  thead .th-max{ display:block; font-weight:600; color:var(--ink-soft); font-size:10px; margin-top:2px; }
+  tbody td{ padding:5px 4px; border-bottom:1px solid var(--border); border-left:1px solid var(--border); text-align:center; vertical-align:middle; }
+  tbody td:first-child{ border-left:none; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background:#fbfaff; }
+  td.name-cell{ font-size:13px; font-weight:600; overflow-wrap:break-word; word-break:keep-all; text-wrap:balance; }
+  .attend-stats-row > span, .notice-item .ni-domain{ word-break:keep-all; text-wrap:balance; }
+  td.num-cell{ font-size:12.5px; color:var(--ink-soft); }
+  td.score-cell input{ width:100%; min-width:0; padding:6px 2px; text-align:center; }
+  .empty-state{
+    text-align:center; padding:40px 20px; color:var(--ink-soft); font-size:13.5px;
+  }
+
+  /* 페이지 맨 아래 제작자 표시 (화면 아래 고정 바에 가려지지 않게 아래 여백을 넉넉히) */
+  .credit{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    margin:36px 0 96px; color:var(--ink-soft); font-size:13px; font-weight:600;
+  }
+
+  .credit-link{ display:inline-flex; color:inherit; border-radius:6px; }
+  .credit-link:hover{ color:var(--ink); }
+  .credit-link:focus-visible{ outline:2px solid var(--purple); outline-offset:3px; }
+
+  /* 시트 안내 바 */
+  .sheet-bar{
+    position:fixed; left:0; right:0; bottom:0; z-index:30;
+    background: var(--surface); border-top:1px solid var(--border);
+    box-shadow: 0 -6px 20px rgba(16,17,20,0.06);
+    padding: 14px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px;
+  }
+  .sheet-bar-text{ font-size:12.5px; color: var(--ink-soft); line-height:1.5; }
+  .sheet-bar-text b{ color: var(--ink); }
+  .btn-sheet{
+    flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:10px 16px; font-size:13px; font-weight:700; font-family:inherit;
+    color: var(--purple-dark); background: var(--purple-tint); border:none;
+    border-radius:10px; cursor:pointer; white-space:nowrap;
+    text-decoration:none;
+  }
+  .btn-sheet:hover{ background: rgba(133,91,251,0.22); }
+
+  .toast{
+    position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
+    background: var(--ink); color:#fff; font-size:13px; font-weight:500;
+    padding:11px 18px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.2);
+    z-index:40; opacity:0; pointer-events:none; transition: opacity .2s ease, transform .2s ease;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
+  .toast.error{ background: var(--red); }
+
+  @media (max-width: 720px){
+    .sheet-bar{ flex-direction:column; align-items:stretch; text-align:center; }
+  }
+  /* 상단 메뉴: 화면이 줄어도 가능한 한 한 줄에 두고(글자·간격만 줄임), 더 좁아지면 3열 격자로 나눈다 */
+  @media (max-width: 1100px){
+    .topbar{ padding:14px 16px; gap:12px; }
+    .topbar-nav{
+      position:static; transform:none; flex:1; min-width:0;
+      flex-wrap:nowrap; justify-content:center; gap:clamp(8px, 1.6vw, 18px);
+    }
+    .topbar-nav button{ font-size:clamp(11px, 1.4vw, 13px); }
+  }
+  @media (max-width: 780px){
+    .topbar{ flex-wrap:wrap; align-items:center; gap:12px; }
+    .topbar-title{ flex:1; }
+    .topbar-logout{ order:2; margin-left:0; }
+    .topbar-nav{ order:3; flex:0 0 100%; display:grid; grid-template-columns:repeat(3, 1fr); gap:8px 12px; justify-content:stretch; }
+    .topbar-nav button{ white-space:normal; word-break:keep-all; font-size:12.5px; padding:6px 4px; text-align:center; }
+    .card{ scroll-margin-top:190px; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="gate-wrap" id="gateWrap">
+  <div class="gate-card">
+    <div class="gate-badge" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+        <rect x="5" y="10" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>교사 인증</h1>
+    <p class="gate-sub">수행평가 관리 화면은 비밀번호가 필요합니다.<br>비밀번호는 구글 시트의 "설정" 탭에서 바꿀 수 있어요.</p>
+    <form id="gateForm">
+      <input type="password" id="gatePassword" placeholder="비밀번호" autocomplete="off" required />
+      <p class="gate-error" id="gateError" hidden></p>
+      <button type="submit" class="gate-btn" id="gateBtn">
+        <span class="btn-label">확인</span>
+        <span class="spinner" hidden></span>
+      </button>
+    </form>
+  </div>
+  <footer class="credit">
+    <a class="credit-link" href="https://github.com/sage810/test-webapp" target="_blank" rel="noopener noreferrer" aria-label="GitHub 저장소 열기 (sage810/test-webapp)" title="GitHub 저장소 열기">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+    </a>
+    <span>@sage810</span>
+  </footer>
+</div>
+
+<div id="dashboard" hidden>
+<div class="topbar">
+  <div class="topbar-title" id="topbarHome" role="button" tabindex="0" title="맨 위로">
+    <span class="topbar-badge" aria-hidden="true">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="4" y="12" width="4" height="8" rx="1" fill="#fff"/>
+        <rect x="10" y="7" width="4" height="13" rx="1" fill="#fff"/>
+        <rect x="16" y="3" width="4" height="17" rx="1" fill="#fff"/>
+      </svg>
+    </span>
+    <h1>수행평가 관리</h1>
+  </div>
+  <div class="topbar-nav">
+    <button type="button" data-section="roster">학생 명단 관리</button>
+    <button type="button" data-section="config">수업 과목 설정</button>
+    <button type="button" data-section="domains">수행 영역 관리</button>
+    <button type="button" data-section="attendance">응시·결시 관리</button>
+    <button type="button" data-section="scores">반별 점수 입력 표</button>
+    <button type="button" data-section="notice">결시자 수행안내</button>
+  </div>
+  <button type="button" class="topbar-logout" id="logoutBtn">로그아웃</button>
+</div>
+
+<div class="wrap">
+
+  <!-- 0. 학생 명단 관리 -->
+  <section class="card" id="section-roster">
+    <button type="button" class="card-head-btn" data-section="roster">
+      <span class="card-head-left">
+        <h2><span class="step-no">1</span>학생 명단 관리</h2>
+        <span class="card-desc">학년·반을 고른 뒤 불러오기를 누르세요. 수업 과목 설정에서 그 학년·반을 연결한 과목에 학생이 자동으로 연결돼요</span>
+      </span>
+      <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="card-body" hidden>
+      <div class="picker-row">
+        <div class="field">
+          <label for="rosterPickGrade">학년</label>
+          <select id="rosterPickGrade"><option value="">선택</option></select>
+        </div>
+        <div class="field">
+          <label for="rosterPickClass">반</label>
+          <select id="rosterPickClass"><option value="">선택</option></select>
+        </div>
+        <button class="btn-secondary" id="loadRosterBtn">불러오기</button>
+      </div>
+      <div class="roster-row-labels">
+        <span class="lbl-roster-num">번호</span>
+        <span class="lbl-roster-name">이름</span>
+        <span style="width:40px;"></span>
+      </div>
+      <div class="roster-list" id="rosterList">
+        <div class="empty-state">과목·학년·반을 선택하고 불러오기를 눌러주세요</div>
+      </div>
+      <button class="btn-dashed" id="addStudentBtn" hidden>+ 학생 추가</button>
+      <div class="actions-row">
+        <span class="save-hint" id="rosterSavedHint"></span>
+        <button class="btn-primary" id="saveRosterBtn" disabled>
+          <span class="btn-label">저장</span>
+          <span class="spinner" hidden></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1. 수업 과목 설정 -->
+  <section class="card" id="section-config">
+    <button type="button" class="card-head-btn" data-section="config">
+      <span class="card-head-left">
+        <h2><span class="step-no">2</span>수업 과목 설정</h2>
+        <span class="card-desc">한 학기에 최대 5개 과목까지 맡을 수 있어요. 학생 추가/삭제는 구글 시트에서도, 이 화면에서도 가능해요.</span>
+      </span>
+      <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="card-body" hidden>
+      <div class="config-grid">
+        <div class="field">
+          <label for="cfgYear">연도</label>
+          <select id="cfgYear"></select>
+        </div>
+        <div class="field">
+          <label for="cfgSemester">학기</label>
+          <select id="cfgSemester">
+            <option value="1학기">1학기</option>
+            <option value="2학기">2학기</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-label-row"><label>수업 과목</label></div>
+      <div class="subject-list" id="subjectList"></div>
+      <button class="btn-dashed" id="addSubjectBtn">+ 과목 추가</button>
+      <p class="subject-hint">과목을 지우면 그 과목의 영역·명단·점수 데이터는 구글 시트에 남아있지만 화면에서는 더 이상 보이지 않아요.</p>
+      <div class="actions-row">
+        <button class="btn-primary" id="saveConfigBtn">
+          <span class="btn-label">저장</span>
+          <span class="spinner" hidden></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. 수행 영역 관리 -->
+  <section class="card" id="section-domains">
+    <button type="button" class="card-head-btn" data-section="domains">
+      <span class="card-head-left">
+        <h2><span class="step-no">3</span>수행 영역 관리</h2>
+        <span class="card-desc">영역 삭제 시 해당 영역의 점수가 함께 삭제돼요.</span>
+      </span>
+      <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="card-body" hidden>
+      <div class="config-grid" style="grid-template-columns:1fr 100px 1fr; margin-bottom:16px;">
+        <div class="field">
+          <label for="domainSubjectSelect">과목</label>
+          <select id="domainSubjectSelect"></select>
+        </div>
+        <div class="field">
+          <label for="domainGradeSelect">학년</label>
+          <select id="domainGradeSelect"></select>
+        </div>
+        <div class="field">
+          <label for="subjectTotalInput">이 과목 총점(만점)</label>
+          <input type="number" id="subjectTotalInput" min="0" placeholder="예: 100" />
+        </div>
+      </div>
+      <p class="mismatch-badge" id="totalMismatchBadge" hidden></p>
+      <div class="domain-row-labels">
+        <span class="lbl-group">영역명</span>
+        <span class="lbl-name">하위 영역명</span>
+        <span class="lbl-max">배점</span>
+        <span style="width:40px;"></span>
+      </div>
+      <div class="domain-list" id="domainList"></div>
+      <button class="btn-dashed" id="addDomainBtn">+ 영역 추가</button>
+      <div class="actions-row">
+        <button class="btn-primary" id="saveDomainsBtn">
+          <span class="btn-label">저장</span>
+          <span class="spinner" hidden></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 응시·결시 관리 -->
+  <section class="card" id="section-attendance">
+    <button type="button" class="card-head-btn" data-section="attendance">
+      <span class="card-head-left">
+        <h2><span class="step-no">4</span>응시·결시 관리</h2>
+        <span class="card-desc">체크하면 그 학생의 해당 영역이 결시로 표시돼요.</span>
+      </span>
+      <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="card-body" hidden>
+    <div class="picker-row">
+      <div class="field">
+        <label for="attendanceSubjectSelect">과목</label>
+        <select id="attendanceSubjectSelect"></select>
+      </div>
+      <div class="field">
+        <label for="attendancePickGrade">학년</label>
+        <select id="attendancePickGrade"><option value="">선택</option></select>
+      </div>
+      <div class="field">
+        <label for="attendancePickClass">반</label>
+        <select id="attendancePickClass"><option value="">선택</option></select>
+      </div>
+      <button class="btn-secondary" id="loadAttendanceBtn">불러오기</button>
+    </div>
+    <p class="attendance-guide">결시를 체크해주세요.</p>
+    <div class="table-scroll">
+      <table id="attendanceTable">
+        <thead id="attendanceTableHead"></thead>
+        <tbody id="attendanceTableBody">
+          <tr><td colspan="99"><div class="empty-state">과목·학년·반을 선택하고 불러오기를 눌러주세요</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="domain-memos" id="attendanceDomainMemosBox" hidden>
+      <div class="domain-memos-head">
+        <p class="domain-memos-title">영역별 메모 (선택)</p>
+        <select id="attendanceMemoFilter" class="memo-filter" aria-label="메모를 볼 영역"></select>
+      </div>
+      <p class="domain-memos-empty" id="attendanceMemoEmpty" hidden>"이번 수행" 상태인 영역이 없어요. 위에서 다른 영역을 고르세요.</p>
+      <div id="attendanceDomainMemos"></div>
+    </div>
+    <div class="attend-stats" id="attendanceStats"></div>
+    <div class="absent-summary" id="absentSummary"></div>
+    <div class="actions-row">
+      <span class="save-hint" id="attendanceSavedHint"></span>
+      <button class="btn-primary" id="saveAttendanceBtn" disabled>
+        <span class="btn-label">저장</span>
+        <span class="spinner" hidden></span>
+      </button>
+    </div>
+    </div>
+  </section>
+
+  <!-- 5. 반별 점수 입력 표 -->
+  <section class="card" id="section-scores">
+    <button type="button" class="card-head-btn" data-section="scores">
+      <span class="card-head-left">
+        <h2><span class="step-no">5</span>반별 점수 입력 표</h2>
+        <span class="card-desc">과목·학년·반을 고른 뒤 불러오기를 눌러주세요.</span>
+      </span>
+      <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="card-body" hidden>
+    <div class="picker-row">
+      <div class="field">
+        <label for="scoreSubjectSelect">과목</label>
+        <select id="scoreSubjectSelect"></select>
+      </div>
+      <div class="field">
+        <label for="pickGrade">학년</label>
+        <select id="pickGrade"><option value="">선택</option></select>
+      </div>
+      <div class="field">
+        <label for="pickClass">반</label>
+        <select id="pickClass"><option value="">선택</option></select>
+      </div>
+      <button class="btn-secondary" id="loadClassBtn">불러오기</button>
+    </div>
+    <div class="table-scroll">
+      <table id="scoreTable">
+        <thead id="scoreTableHead"></thead>
+        <tbody id="scoreTableBody">
+          <tr><td colspan="99"><div class="empty-state">과목·학년·반을 선택하고 불러오기를 눌러주세요</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="actions-row">
+      <span class="save-hint" id="lastSavedHint"></span>
+      <button class="btn-primary" id="saveScoresBtn" disabled>
+        <span class="btn-label">전체 저장</span>
+        <span class="spinner" hidden></span>
+      </button>
+    </div>
+    </div>
+  </section>
+
+  <!-- 6. 결시자 수행안내 -->
+  <section class="card" id="section-notice">
+    <button type="button" class="card-head-btn" data-section="notice">
+      <span class="card-head-left">
+        <h2><span class="step-no">6</span>결시자 수행안내</h2>
+        <span class="card-desc">결시로 체크된 학생의 수행 안내장을 A4 한 장에 3행×3열(9칸)로 만들어요.</span>
+      </span>
+      <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="card-body" hidden>
+      <div class="picker-row notice-picker">
+        <div class="field">
+          <label for="noticeSubjectSelect">과목</label>
+          <select id="noticeSubjectSelect"></select>
+        </div>
+        <div class="field notice-domain-field">
+          <label for="noticeDomainSelect">수행 영역</label>
+          <select id="noticeDomainSelect"></select>
+        </div>
+        <button class="btn-secondary" id="loadNoticeBtn">결시자 불러오기</button>
+      </div>
+      <div class="picker-row">
+        <div class="field">
+          <label for="noticeDate">수행 날짜</label>
+          <input type="date" id="noticeDate" />
+        </div>
+        <div class="field">
+          <label for="noticeTime">시간</label>
+          <input type="text" id="noticeTime" placeholder="예: 점심시간" />
+        </div>
+        <div class="field">
+          <label for="noticePlace">장소</label>
+          <input type="text" id="noticePlace" placeholder="예: 컴퓨터실" />
+        </div>
+      </div>
+      <div class="picker-row">
+        <div class="field notice-memo-field" id="noticeMemoField">
+          <label for="noticeMemo">기타 메모 (선택)</label>
+          <textarea id="noticeMemo" rows="1" placeholder="예: 준비물 지참"></textarea>
+        </div>
+      </div>
+      <div class="notice-list" id="noticeList">
+        <div class="empty-state">과목을 고르고 결시자 불러오기를 눌러주세요</div>
+      </div>
+      <div class="actions-row">
+        <span class="save-hint" id="noticeCount"></span>
+        <button class="btn-primary" id="makeNoticePdfBtn" disabled>
+          <span class="btn-label">PDF 만들기</span>
+        </button>
+      </div>
+      <p class="subject-hint">PDF 만들기를 누르면 인쇄 창이 열려요. 대상을 "PDF로 저장", 용지를 A4로 고르면 돼요. 여백은 기본값 그대로 두어도 칸이 밀리지 않아요. 시간·장소를 비워두면 손으로 쓸 수 있게 빈 줄로 나와요.</p>
+    </div>
+  </section>
+
+  <footer class="credit">
+    <a class="credit-link" href="https://github.com/sage810/test-webapp" target="_blank" rel="noopener noreferrer" aria-label="GitHub 저장소 열기 (sage810/test-webapp)" title="GitHub 저장소 열기">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+    </svg>
+    </a>
+    <span>@sage810</span>
+  </footer>
+
+</div>
+
+<div class="sheet-bar">
+  <div class="sheet-bar-text">
+    점수를 수정한 뒤에는 <b>반드시 저장 버튼</b>을 눌러주세요. 학년별 반 개수는 구글 시트의 "설정" 탭에서 직접 관리합니다.
+  </div>
+  <button class="btn-sheet" id="openSheetBtn">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-6-5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M13 3v5h6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      <path d="M9 13h6M9 17h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+    구글 시트에서 열기
+  </button>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="noticePrintArea" aria-hidden="true"></div>
+
+<script>
+/* ---- google.script.run 이 없는 로컬/미리보기 환경을 위한 목업 (실제 배포 시엔 사용되지 않음) ---- */
+function createMockRun(){
+  var state = {
+    year:2025, semester:'2학기',
+    password:'1234',
+    classCounts: { 1:4, 2:4, 3:4 },
+    subjects:[
+      { id:'demo-subject-1', name:'기술·가정', declaredTotal:100,
+        classPairs:[{grade:'1',cls:'1'},{grade:'1',cls:'2'}], domains:[
+        {name:'청소년의 건강한 식생활 제안하기', max:20, group:''},
+        {name:'나에게 어울리는 옷 디자인하기', max:16, group:'의복 디자인하기'},
+        {name:'에코 수세미 제작하기', max:14, group:'의복 디자인하기'},
+        {name:'적정기술의 필요성 주장하기', max:20, group:''},
+        {name:'발명품 계획하기', max:14, group:'기술적 문제 해결 및 발명품 기획 프로젝트'},
+        {name:'발명품 제작하기', max:16, group:'기술적 문제 해결 및 발명품 기획 프로젝트'}
+      ]}
+    ],
+    sheetUrl:'https://docs.google.com/spreadsheets/d/mock',
+    roster:{ // 과목별 학년/반 -> 학생 목록
+      '기술·가정': {
+        '1-1': [
+          {number:'1', name:'홍길동', scores:{'청소년의 건강한 식생활 제안하기':18,'나에게 어울리는 옷 디자인하기':15,'에코 수세미 제작하기':'','적정기술의 필요성 주장하기':'결시','발명품 계획하기':'','발명품 제작하기':''}},
+          {number:'2', name:'김민준', scores:{'청소년의 건강한 식생활 제안하기':16,'나에게 어울리는 옷 디자인하기':14,'에코 수세미 제작하기':'','적정기술의 필요성 주장하기':18,'발명품 계획하기':13,'발명품 제작하기':15}},
+          {number:'3', name:'이서연', scores:{'청소년의 건강한 식생활 제안하기':20,'나에게 어울리는 옷 디자인하기':16,'에코 수세미 제작하기':'','적정기술의 필요성 주장하기':'','발명품 계획하기':14,'발명품 제작하기':14}},
+          {number:'4', name:'박도윤', scores:{'청소년의 건강한 식생활 제안하기':15,'나에게 어울리는 옷 디자인하기':12,'에코 수세미 제작하기':'','적정기술의 필요성 주장하기':17,'발명품 계획하기':10,'발명품 제작하기':13}}
+        ],
+        '1-2': [
+          {number:'1', name:'최지우', scores:{'청소년의 건강한 식생활 제안하기':17,'나에게 어울리는 옷 디자인하기':13,'에코 수세미 제작하기':'','적정기술의 필요성 주장하기':'결시','발명품 계획하기':12,'발명품 제작하기':15}},
+          {number:'2', name:'정하은', scores:{'청소년의 건강한 식생활 제안하기':19,'나에게 어울리는 옷 디자인하기':15,'에코 수세미 제작하기':'','적정기술의 필요성 주장하기':20,'발명품 계획하기':14,'발명품 제작하기':16}}
+        ]
+      }
+    },
+    memos:{}, // 과목ID -> 학년-반 -> { 영역명: 메모 }
+    statuses:{ // 과목ID -> 학년-반 -> 영역명 -> 상태 (반마다 진도가 다름)
+      'demo-subject-1': {
+        '1-1': { '청소년의 건강한 식생활 제안하기':'완료', '나에게 어울리는 옷 디자인하기':'완료', '에코 수세미 제작하기':'이번 수행' },
+        '1-2': { '청소년의 건강한 식생활 제안하기':'완료', '나에게 어울리는 옷 디자인하기':'이번 수행' }
+      }
+    }
+  };
+  function check(pw){ if (String(pw) !== state.password) throw new Error('비밀번호가 올바르지 않습니다.'); }
+  function findSubjectById(id){ return state.subjects.filter(function(s){ return s.id === id; })[0]; }
+  function resolveSubjectInstance(name, grade, cls){
+    var candidates = state.subjects.filter(function(s){ return s.name === name; });
+    if (candidates.length <= 1) return candidates[0] || null;
+    var matched = candidates.filter(function(s){
+      return (s.classPairs||[]).some(function(p){ return String(p.grade)===String(grade) && String(p.cls)===String(cls); });
+    });
+    return matched[0] || candidates[0];
+  }
+  // 그 반에 기록이 없는 영역은 예정 (Code.gs 의 classStatusesFor_ 와 같은 규칙)
+  function classStatusesOf(s, g, c){
+    var saved = ((state.statuses[s.id] || {})[g+'-'+c]) || {};
+    var out = {};
+    s.domains.forEach(function(d){ out[d.name] = saved[d.name] || '예정'; });
+    return out;
+  }
+  // 명단은 학급(학년-반) 단위. 점수 저장소(state.roster)에는 과목별 점수만 남는다.
+  state.classRoster = {};
+  Object.keys(state.roster).forEach(function(subj){
+    Object.keys(state.roster[subj]).forEach(function(key){
+      state.classRoster[key] = state.classRoster[key] || [];
+      state.roster[subj][key].forEach(function(stu){
+        if (!state.classRoster[key].some(function(e){ return String(e.number) === String(stu.number); })){
+          state.classRoster[key].push({ number: stu.number, name: stu.name });
+        }
+      });
+    });
+  });
+  function studentsFor(subject, key){
+    var store = (state.roster[subject] || {})[key] || [];
+    return (state.classRoster[key] || []).map(function(st){
+      var found = store.filter(function(e){ return String(e.number) === String(st.number); })[0];
+      return { number: st.number, name: st.name, scores: found ? found.scores : {} };
+    });
+  }
+  function isAbsentValue(raw){ return raw === ABSENT_MARKER || String(raw).indexOf(ABSENT_MARKER + ':') === 0; }
+  var handlers = {};
+  var api = {
+    withSuccessHandler: function(fn){ handlers.success = fn; return api; },
+    withFailureHandler: function(fn){ handlers.failure = fn; return api; },
+    verifyTeacherPassword: function(pw){ run(function(){ return { ok: String(pw) === state.password }; }); },
+    getTeacherConfig: function(pw){ run(function(){
+      check(pw);
+      return {
+        year:state.year, semester:state.semester,
+        classCounts: state.classCounts,
+        subjects: state.subjects.map(function(s){ return { id:s.id, name:s.name, declaredTotal:s.declaredTotal, classPairs:(s.classPairs||[]).slice(), domains:s.domains.slice() }; }),
+        sheetUrl: state.sheetUrl
+      };
+    }); },
+    saveTeacherConfig: function(pw,cfg){ run(function(){
+      check(pw);
+      state.year=cfg.year; state.semester=cfg.semester;
+      return {ok:true};
+    }); },
+    saveSubjects: function(pw,subjects){ run(function(){
+      check(pw);
+      state.subjects = subjects.map(function(s){
+        var old = s.id ? findSubjectById(s.id) : null;
+        return {
+          id: String(s.id || '').trim() || ('mock-' + Date.now() + '-' + Math.random().toString(36).slice(2,8)),
+          name:s.name, declaredTotal:Number(s.declaredTotal)||0,
+          classPairs: s.classPairs || (old ? old.classPairs : []), domains: old ? old.domains : []
+        };
+      });
+      return {ok:true};
+    }); },
+    saveDomains: function(pw,subjectId,domains){ run(function(){
+      check(pw);
+      var s = findSubjectById(subjectId);
+      if (s) s.domains = domains.map(function(d){ return { name:d.name, max:d.max, group:d.group }; });
+      return {ok:true};
+    }); },
+    getClassScores: function(pw,subject,g,c){ run(function(){
+      check(pw);
+      var s = resolveSubjectInstance(subject, g, c);
+      var key = g+'-'+c;
+      return { domains: s ? s.domains.slice() : [], students: studentsFor(subject, key) };
+    }); },
+    saveClassScores: function(pw,subject,g,c,students){ run(function(){
+      check(pw);
+      state.roster[subject] = state.roster[subject] || {};
+      var key = g+'-'+c;
+      var existing = state.roster[subject][key] || [];
+      state.roster[subject][key] = students.map(function(stu){
+        var old = existing.filter(function(e){ return String(e.number) === String(stu.number); })[0];
+        var scores = old ? Object.assign({}, old.scores) : {};
+        Object.keys(stu.scores).forEach(function(d){ scores[d] = stu.scores[d]; });
+        return { number: stu.number, name: stu.name, scores: scores };
+      });
+      return {ok:true, savedAt: new Date().toISOString()};
+    }); },
+    getRosterForClass: function(pw,g,c){ run(function(){
+      check(pw);
+      var list = state.classRoster[g+'-'+c] || [];
+      return { students: list.map(function(s){ return { number:s.number, name:s.name }; }) };
+    }); },
+    saveRosterForClass: function(pw,g,c,students){ run(function(){
+      check(pw);
+      state.classRoster[g+'-'+c] = students.map(function(s){ return { number:s.number, name:s.name }; });
+      return {ok:true};
+    }); },
+    getAttendanceForClass: function(pw,subject,g,c){ run(function(){
+      check(pw);
+      var s = resolveSubjectInstance(subject, g, c);
+      var domains = s ? s.domains.slice() : [];
+      var key = g+'-'+c;
+      var list = studentsFor(subject, key);
+      var students = list.map(function(stu){
+        var absent = {}, hasScore = {};
+        domains.forEach(function(d){
+          var v = stu.scores[d.name];
+          var isAbsent = isAbsentValue(v);
+          absent[d.name] = isAbsent;
+          hasScore[d.name] = v !== undefined && v !== '' && !isAbsent;
+        });
+        return { number: stu.number, name: stu.name, absent: absent, hasScore: hasScore };
+      });
+      var memos = Object.assign({}, ((state.memos[s ? s.id : ''] || {})[key]) || {});
+      var statuses = s ? classStatusesOf(s, g, c) : {};
+      return { domains: domains, students: students, memos: memos, statuses: statuses };
+    }); },
+    saveAttendanceForClass: function(pw,subject,g,c,students,memos,statuses){ run(function(){
+      check(pw);
+      var s = resolveSubjectInstance(subject, g, c);
+      var key = g+'-'+c;
+      if (s){
+        if (statuses){
+          state.statuses[s.id] = state.statuses[s.id] || {};
+          state.statuses[s.id][key] = Object.assign({}, statuses);
+        }
+        state.memos[s.id] = state.memos[s.id] || {};
+        var kept = {};
+        Object.keys(memos || {}).forEach(function(n){ if (memos[n]) kept[n] = memos[n]; });
+        state.memos[s.id][key] = kept;
+      }
+      state.roster[subject] = state.roster[subject] || {};
+      var existing = state.roster[subject][key] || [];
+      students.forEach(function(stu){
+        var row = existing.filter(function(e){ return String(e.number) === String(stu.number); })[0];
+        if (!row){ row = { number: stu.number, name: stu.name, scores: {} }; existing.push(row); }
+        Object.keys(stu.absent).forEach(function(domainName){
+          if (stu.absent[domainName]) row.scores[domainName] = ABSENT_MARKER;
+          else if (isAbsentValue(row.scores[domainName])) row.scores[domainName] = '';
+        });
+      });
+      state.roster[subject][key] = existing;
+      return {ok:true};
+    }); },
+    getAbsentees: function(pw,subject){ run(function(){
+      check(pw);
+      var rows = [];
+      var byClass = state.roster[subject] || {};
+      Object.keys(byClass).forEach(function(key){
+        var parts = key.split('-');
+        var s = resolveSubjectInstance(subject, parts[0], parts[1]);
+        if (!s) return;
+        byClass[key].forEach(function(stu){
+          s.domains.forEach(function(d, order){
+            if (isAbsentValue(stu.scores[d.name])) rows.push({ domain:d.name, order:order, grade:parts[0], cls:parts[1], number:String(stu.number), name:stu.name });
+          });
+        });
+      });
+      rows.sort(function(a,b){
+        return (a.order - b.order) || (Number(a.grade) - Number(b.grade)) || (Number(a.cls) - Number(b.cls)) || (Number(a.number) - Number(b.number));
+      });
+      var domains = [];
+      rows.forEach(function(r){ if (domains.indexOf(r.domain) === -1) domains.push(r.domain); });
+      return { rows: rows, domains: domains };
+    }); },
+    getSheetUrl: function(pw){ run(function(){ check(pw); return state.sheetUrl; }); }
+  };
+  function run(fn){
+    var h = handlers; handlers = {};
+    setTimeout(function(){
+      try{ var r = fn(); if(h.success) h.success(r); }
+      catch(e){ if(h.failure) h.failure(e); }
+    }, 400);
+  }
+  return api;
+}
+var gs = (typeof google !== 'undefined' && google.script && google.script.run) ? google.script.run : createMockRun();
+
+/* ---- 공통 유틸 ---- */
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, function(ch){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch];
+  });
+}
+function showToast(msg, isError){
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(function(){ t.className = 'toast'; }, 2400);
+}
+function setBtnLoading(btn, loading, labelWhenIdle){
+  btn.disabled = loading;
+  btn.querySelector('.spinner').hidden = !loading;
+  btn.querySelector('.btn-label').textContent = loading ? '저장 중...' : labelWhenIdle;
+}
+function rangeArray(start, end){
+  var arr = []; start = Number(start); end = Number(end);
+  if (isNaN(start) || isNaN(end)) return arr;
+  for (var i=start; i<=end; i++) arr.push(String(i));
+  return arr;
+}
+
+var MAX_SUBJECTS = 5;
+var ABSENT_MARKER = '결시';
+var TEACHER_PW = '';
+var currentConfig = null;      // { year, semester, subjects:[{id,name,declaredTotal,classPairs,domains}], sheetUrl }
+var lastSavedSubjects = []; // [{id, name}]
+var lastSavedDomains = [];
+var lastSavedRosterNumbers = [];
+var selectedDomainSubject = '';
+var selectedScoreSubject = '';
+var selectedAttendanceSubject = '';
+var selectedNoticeSubject = '';
+var noticeData = null; // { rows:[{domain,grade,cls,number,name}], domains:[...] }
+var currentClassCtx = null;
+var currentRosterCtx = null;
+var currentAttendanceCtx = null;
+
+/* ---- 아코디언(학생 명단 관리 / 수업 과목 설정 / 수행 영역 관리 / 응시·결시 관리 / 반별 점수 입력 표) ---- */
+var SECTION_KEYS = ['roster', 'config', 'domains', 'attendance', 'scores', 'notice'];
+var sectionEls = {};
+
+function setupAccordion(){
+  SECTION_KEYS.forEach(function(key){
+    var card = document.getElementById('section-' + key);
+    sectionEls[key] = {
+      headBtn: card.querySelector('.card-head-btn'),
+      body: card.querySelector('.card-body'),
+      navBtn: document.querySelector('.topbar-nav button[data-section="' + key + '"]')
+    };
+    sectionEls[key].headBtn.addEventListener('click', function(){ toggleSection(key); });
+  });
+  document.querySelectorAll('.topbar-nav button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var key = btn.dataset.section;
+      setSectionOpen(key, true);
+      document.getElementById('section-' + key).scrollIntoView({ behavior:'smooth', block:'start' });
+    });
+  });
+}
+function setSectionOpen(key, isOpen){
+  sectionEls[key].body.hidden = !isOpen;
+  sectionEls[key].headBtn.classList.toggle('open', isOpen);
+  if (sectionEls[key].navBtn) sectionEls[key].navBtn.classList.toggle('active', isOpen);
+  if (isOpen && key === 'domains') autosizeAllDomainTextareas();
+}
+function toggleSection(key){
+  setSectionOpen(key, sectionEls[key].body.hidden);
+}
+setupAccordion();
+
+function todayStr_(){
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+document.getElementById('noticeDate').value = todayStr_();
+
+/* ---- 상단 바: 제목/아이콘 클릭 시 맨 위로, 로그아웃 ---- */
+function scrollToTop(){ window.scrollTo({ top: 0, behavior: 'smooth' }); }
+var topbarHome = document.getElementById('topbarHome');
+topbarHome.addEventListener('click', scrollToTop);
+topbarHome.addEventListener('keydown', function(e){
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); scrollToTop(); }
+});
+
+document.getElementById('logoutBtn').addEventListener('click', function(){
+  TEACHER_PW = '';
+  currentConfig = null;
+  document.getElementById('dashboard').hidden = true;
+  document.getElementById('gateWrap').hidden = false;
+  var pwInput = document.getElementById('gatePassword');
+  pwInput.value = '';
+  document.getElementById('gateError').hidden = true;
+  window.scrollTo(0, 0);
+  pwInput.focus();
+});
+
+/* ---- 0. 비밀번호 게이트 ---- */
+document.getElementById('gateForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  var btn = document.getElementById('gateBtn');
+  var pwInput = document.getElementById('gatePassword');
+  var errEl = document.getElementById('gateError');
+  errEl.hidden = true;
+
+  var pw = pwInput.value;
+  if (!pw){ errEl.textContent = '비밀번호를 입력해주세요.'; errEl.hidden = false; return; }
+
+  setBtnLoading(btn, true);
+  gs.withSuccessHandler(function(res){
+    setBtnLoading(btn, false, '확인');
+    if (!res.ok){
+      errEl.textContent = '비밀번호가 올바르지 않습니다.';
+      errEl.hidden = false;
+      pwInput.value = '';
+      pwInput.focus();
+      return;
+    }
+    TEACHER_PW = pw;
+    document.getElementById('gateWrap').hidden = true;
+    document.getElementById('dashboard').hidden = false;
+    loadDashboard();
+  }).withFailureHandler(function(){
+    setBtnLoading(btn, false, '확인');
+    errEl.textContent = '확인 중 오류가 발생했어요. 다시 시도해주세요.';
+    errEl.hidden = false;
+  }).verifyTeacherPassword(pw);
+});
+
+function loadDashboard(){
+  gs.withSuccessHandler(applyConfigToForm).withFailureHandler(function(){
+    showToast('설정을 불러오지 못했어요.', true);
+  }).getTeacherConfig(TEACHER_PW);
+}
+
+/* ---- 1. 학생 명단 관리 ---- */
+// 학생 명단은 과목과 상관없이 학급(학년·반) 단위로 관리한다.
+function onRosterConfigLoaded(){
+  document.getElementById('rosterPickGrade').innerHTML = '<option value="">선택</option>';
+  document.getElementById('rosterPickClass').innerHTML = '<option value="">선택</option>';
+  document.getElementById('rosterList').innerHTML = '<div class="empty-state">학년·반을 선택하고 불러오기를 눌러주세요</div>';
+  document.getElementById('addStudentBtn').hidden = true;
+  document.getElementById('saveRosterBtn').disabled = true;
+  currentRosterCtx = null;
+  if (!currentConfig) return;
+
+  // 학년은 항상 1·2·3학년 모두, 반은 구글 시트 "설정"의 N학년반수만큼 보여준다.
+  var gSel = document.getElementById('rosterPickGrade');
+  gSel.innerHTML = '<option value="">선택</option>' + [1, 2, 3].map(function(g){ return '<option value="'+g+'">'+g+'학년</option>'; }).join('');
+  gSel.onchange = function(){
+    var count = Number((currentConfig.classCounts || {})[gSel.value]) || 0;
+    var options = '<option value="">선택</option>';
+    for (var c = 1; c <= count; c++) options += '<option value="'+c+'">'+c+'반</option>';
+    document.getElementById('rosterPickClass').innerHTML = options;
+  };
+}
+
+document.getElementById('loadRosterBtn').addEventListener('click', function(){
+  var g = document.getElementById('rosterPickGrade').value;
+  var c = document.getElementById('rosterPickClass').value;
+  if (!g || !c){ showToast('학년과 반을 선택해주세요.', true); return; }
+  var list = document.getElementById('rosterList');
+  list.innerHTML = '<div class="empty-state">불러오는 중...</div>';
+  document.getElementById('addStudentBtn').hidden = true;
+  document.getElementById('saveRosterBtn').disabled = true;
+
+  gs.withSuccessHandler(function(res){
+    renderRosterList(res, g, c);
+  }).withFailureHandler(function(){
+    list.innerHTML = '<div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div>';
+  }).getRosterForClass(TEACHER_PW, g, c);
+});
+
+function renderRosterList(res, g, c){
+  currentRosterCtx = { grade:g, class:c };
+  lastSavedRosterNumbers = res.students.map(function(s){ return String(s.number); });
+  var list = document.getElementById('rosterList');
+  list.innerHTML = '';
+  if (res.students.length === 0){
+    addRosterRow({number:'', name:''});
+  } else {
+    res.students.forEach(function(s){ addRosterRow(s); });
+  }
+  document.getElementById('addStudentBtn').hidden = false;
+  document.getElementById('saveRosterBtn').disabled = false;
+  document.getElementById('rosterSavedHint').textContent = '';
+}
+function addRosterRow(s){
+  s = s || {number:'', name:''};
+  var list = document.getElementById('rosterList');
+  var row = document.createElement('div');
+  row.className = 'roster-row';
+  row.innerHTML =
+    '<input type="text" class="roster-num-input" value="' + escapeHtml(s.number || '') + '" placeholder="번호" inputmode="numeric" />' +
+    '<input type="text" class="roster-name-input" value="' + escapeHtml(s.name || '') + '" placeholder="이름" />' +
+    '<button type="button" class="roster-del" title="삭제">×</button>';
+  row.querySelector('.roster-del').addEventListener('click', function(){
+    var name = row.querySelector('.roster-name-input').value.trim();
+    var ok = confirm((name ? '"' + name + '" 학생을' : '이 학생을') + ' 명단에서 삭제할까요?\n(저장을 눌러야 실제로 반영돼요)');
+    if (!ok) return;
+    row.remove();
+  });
+  list.appendChild(row);
+}
+document.getElementById('addStudentBtn').addEventListener('click', function(){
+  addRosterRow();
+});
+document.getElementById('saveRosterBtn').addEventListener('click', function(){
+  if (!currentRosterCtx) return;
+  var btn = this;
+  var rows = document.querySelectorAll('#rosterList .roster-row');
+  var students = Array.from(rows).map(function(row){
+    return {
+      number: row.querySelector('.roster-num-input').value.trim(),
+      name: row.querySelector('.roster-name-input').value.trim()
+    };
+  }).filter(function(s){ return s.number && s.name; });
+
+  if (students.length === 0){ showToast('학생을 한 명 이상 입력해주세요.', true); return; }
+
+  var newNumbers = students.map(function(s){ return String(s.number); });
+  var removed = lastSavedRosterNumbers.filter(function(n){ return newNumbers.indexOf(n) === -1; });
+  if (removed.length > 0){
+    var ok = confirm('다음 번호의 학생을 명단에서 삭제하면 그동안의 점수도 더 이상 화면에 표시되지 않아요:\n' + removed.join(', ') + '번\n\n계속할까요?');
+    if (!ok) return;
+  }
+
+  setBtnLoading(btn, true);
+  gs.withSuccessHandler(function(){
+    setBtnLoading(btn, false, '저장');
+    showToast('학생 명단이 저장됐어요.');
+    document.getElementById('rosterSavedHint').textContent = '마지막 저장: 방금 전';
+    lastSavedRosterNumbers = newNumbers;
+  }).withFailureHandler(function(){
+    setBtnLoading(btn, false, '저장');
+    showToast('저장에 실패했어요. 다시 시도해주세요.', true);
+  }).saveRosterForClass(TEACHER_PW, currentRosterCtx.grade, currentRosterCtx.class, students);
+});
+
+/* ---- 2. 수업 과목 설정 ---- */
+function populateYearSelect(selectedYear){
+  var sel = document.getElementById('cfgYear');
+  var thisYear = new Date().getFullYear();
+  var years = [];
+  for (var y = thisYear - 1; y <= thisYear + 3; y++) years.push(y);
+  if (selectedYear && years.indexOf(Number(selectedYear)) === -1) years.push(Number(selectedYear));
+  years.sort(function(a,b){ return a - b; });
+  sel.innerHTML = years.map(function(y){ return '<option value="' + y + '">' + y + '년</option>'; }).join('');
+  sel.value = selectedYear;
+}
+
+function getUniqueNames(subjects){
+  var seen = {}; var out = [];
+  subjects.forEach(function(s){ if (!seen[s.name]){ seen[s.name] = true; out.push(s.name); } });
+  return out;
+}
+
+function applyConfigToForm(cfg){
+  currentConfig = cfg;
+  populateYearSelect(cfg.year);
+  document.getElementById('cfgSemester').value = cfg.semester;
+
+  var names = getUniqueNames(cfg.subjects);
+
+  renderSubjectList(cfg.subjects);
+  populateSubjectSelect('domainSubjectSelect', names, selectedDomainSubject);
+  populateSubjectSelect('scoreSubjectSelect', names, selectedScoreSubject);
+  populateSubjectSelect('attendanceSubjectSelect', names, selectedAttendanceSubject);
+  populateSubjectSelect('noticeSubjectSelect', names, selectedNoticeSubject);
+  onNoticeSubjectChange();
+  onDomainSubjectChange();
+  onScoreSubjectChange();
+  onRosterConfigLoaded();
+  onAttendanceSubjectChange();
+}
+
+function renderSubjectList(subjects){
+  lastSavedSubjects = subjects.map(function(s){ return { id: s.id, name: s.name }; });
+  var list = document.getElementById('subjectList');
+  list.innerHTML = '';
+  subjects.forEach(function(s){ addSubjectItem(s.name, s.classPairs || [], s.id); });
+  if (subjects.length === 0) addSubjectItem('', []);
+  updateAddSubjectBtn();
+}
+
+function renderClassChips(chipRow){
+  var pairs = JSON.parse(chipRow.dataset.pairs || '[]');
+  chipRow.innerHTML = pairs.map(function(p, idx){
+    return '<span class="class-chip">' + escapeHtml(p.grade) + '학년 ' + escapeHtml(p.cls) + '반' +
+      '<button type="button" data-idx="' + idx + '" title="삭제">×</button></span>';
+  }).join('');
+  chipRow.querySelectorAll('button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var i = Number(btn.dataset.idx);
+      var p = pairs[i];
+      var ok = confirm(p.grade + '학년 ' + p.cls + '반을 목록에서 삭제할까요?');
+      if (!ok) return;
+      pairs.splice(i, 1);
+      chipRow.dataset.pairs = JSON.stringify(pairs);
+      renderClassChips(chipRow);
+    });
+  });
+}
+
+function addSubjectItem(name, classPairs, id){
+  var list = document.getElementById('subjectList');
+  if (list.children.length >= MAX_SUBJECTS) return;
+  var item = document.createElement('div');
+  item.className = 'subject-item';
+  item.dataset.subjectId = id || '';
+
+  var gradeTabs = [1,2,3].map(function(g){
+    return '<button type="button" class="grade-tab" data-grade="' + g + '">' + g + '학년</button>';
+  }).join('');
+
+  item.innerHTML =
+    '<div class="subject-row">' +
+      '<input type="text" class="subject-name-input" value="' + escapeHtml(name || '') + '" placeholder="예: 수학" />' +
+      '<button type="button" class="subject-del" title="삭제">×</button>' +
+    '</div>' +
+    '<div class="class-chip-row"></div>' +
+    '<button type="button" class="class-toggle">' +
+      '<span class="class-toggle-label">이 과목을 듣는 학년·반 (여러 개 추가 가능)</span>' +
+      '<svg class="class-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+        '<path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      '</svg>' +
+    '</button>' +
+    '<div class="class-picker" hidden>' +
+      '<div class="grade-tabs">' + gradeTabs + '</div>' +
+      '<div class="class-add-row" hidden>' +
+        '<span class="class-quick-btns"></span>' +
+        '<button type="button" class="class-other-btn" title="다른 반 번호 입력">+</button>' +
+        '<input type="text" class="class-add-custom" placeholder="반 숫자만" hidden />' +
+        '<button type="button" class="class-add-btn" hidden>확인</button>' +
+      '</div>' +
+    '</div>';
+
+  var chipRow = item.querySelector('.class-chip-row');
+  chipRow.dataset.pairs = JSON.stringify(classPairs);
+  renderClassChips(chipRow);
+
+  item.querySelector('.subject-del').addEventListener('click', function(){
+    var nameNow = item.querySelector('.subject-name-input').value.trim();
+    var ok = confirm((nameNow ? '"' + nameNow + '" 과목을' : '이 과목을') + ' 목록에서 삭제할까요?\n(저장을 눌러야 실제로 반영돼요)');
+    if (!ok) return;
+    item.remove();
+    updateAddSubjectBtn();
+  });
+
+  var toggleBtn = item.querySelector('.class-toggle');
+  var picker = item.querySelector('.class-picker');
+  toggleBtn.addEventListener('click', function(){
+    picker.hidden = !picker.hidden;
+    toggleBtn.classList.toggle('open', !picker.hidden);
+  });
+
+  function addPair(g, c){
+    if (!c){ showToast('반을 입력해주세요.', true); return; }
+    var pairs = JSON.parse(chipRow.dataset.pairs || '[]');
+    if (pairs.some(function(p){ return p.grade === g && p.cls === c; })){
+      showToast('이미 추가된 학년·반이에요.', true); return;
+    }
+    pairs.push({ grade:g, cls:c });
+    chipRow.dataset.pairs = JSON.stringify(pairs);
+    renderClassChips(chipRow);
+  }
+
+  var addRow = item.querySelector('.class-add-row');
+  var quickBtnsEl = item.querySelector('.class-quick-btns');
+  var selectedGrade = '';
+
+  function renderQuickBtns(grade){
+    var count = (currentConfig && currentConfig.classCounts && currentConfig.classCounts[grade]) || 9;
+    var html = '';
+    for (var i = 1; i <= count; i++){
+      html += '<button type="button" class="class-quick-btn" data-cls="' + i + '">' + i + '반</button>';
+    }
+    quickBtnsEl.innerHTML = html;
+    quickBtnsEl.querySelectorAll('.class-quick-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        addPair(selectedGrade, btn.dataset.cls);
+      });
+    });
+  }
+
+  var gradeTabEls = item.querySelectorAll('.grade-tab');
+  gradeTabEls.forEach(function(tab){
+    tab.addEventListener('click', function(){
+      selectedGrade = tab.dataset.grade;
+      gradeTabEls.forEach(function(t){ t.classList.toggle('active', t === tab); });
+      addRow.hidden = false;
+      renderQuickBtns(selectedGrade);
+    });
+  });
+
+  var otherBtn = item.querySelector('.class-other-btn');
+  var customInput = item.querySelector('.class-add-custom');
+  var confirmBtn = item.querySelector('.class-add-btn');
+  otherBtn.addEventListener('click', function(){
+    otherBtn.hidden = true;
+    customInput.hidden = false;
+    confirmBtn.hidden = false;
+    customInput.focus();
+  });
+  function confirmCustom(){
+    addPair(selectedGrade, customInput.value.trim());
+    customInput.value = '';
+    customInput.hidden = true;
+    confirmBtn.hidden = true;
+    otherBtn.hidden = false;
+  }
+  confirmBtn.addEventListener('click', confirmCustom);
+  customInput.addEventListener('keydown', function(e){
+    if (e.key === 'Enter'){ e.preventDefault(); confirmCustom(); }
+  });
+
+  list.appendChild(item);
+  updateAddSubjectBtn();
+}
+function updateAddSubjectBtn(){
+  var count = document.getElementById('subjectList').children.length;
+  var btn = document.getElementById('addSubjectBtn');
+  btn.disabled = count >= MAX_SUBJECTS;
+  btn.textContent = count >= MAX_SUBJECTS ? '과목은 최대 5개까지예요' : '+ 과목 추가';
+}
+document.getElementById('addSubjectBtn').addEventListener('click', function(){
+  addSubjectItem('', []);
+});
+
+function populateSubjectSelect(selectId, names, preferred){
+  var sel = document.getElementById(selectId);
+  sel.innerHTML = names.map(function(n){ return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>'; }).join('');
+  var value = names.indexOf(preferred) >= 0 ? preferred : (names[0] || '');
+  sel.value = value;
+  if (selectId === 'domainSubjectSelect') selectedDomainSubject = value;
+  if (selectId === 'scoreSubjectSelect') selectedScoreSubject = value;
+  if (selectId === 'attendanceSubjectSelect') selectedAttendanceSubject = value;
+  if (selectId === 'noticeSubjectSelect') selectedNoticeSubject = value;
+}
+
+document.getElementById('saveConfigBtn').addEventListener('click', function(){
+  var btn = this;
+  var year = Number(document.getElementById('cfgYear').value);
+  var semester = document.getElementById('cfgSemester').value;
+
+  var items = document.querySelectorAll('#subjectList .subject-item');
+  var entries = Array.from(items).map(function(item){
+    var name = item.querySelector('.subject-name-input').value.trim();
+    var pairs = JSON.parse(item.querySelector('.class-chip-row').dataset.pairs || '[]');
+    return { name: name, classPairs: pairs, id: item.dataset.subjectId || '' };
+  }).filter(function(e){ return e.name; }).slice(0, MAX_SUBJECTS);
+  if (entries.length === 0){ showToast('과목을 하나 이상 추가해주세요.', true); return; }
+
+  var currentIds = entries.map(function(e){ return e.id; }).filter(Boolean);
+  var removed = lastSavedSubjects.filter(function(s){ return currentIds.indexOf(s.id) === -1; });
+  if (removed.length > 0){
+    var ok = confirm('다음 과목을 목록에서 지우면 화면에서 더는 안 보여요(시트 데이터는 남아있어요):\n' + removed.map(function(s){ return s.name; }).join(', ') + '\n\n계속할까요?');
+    if (!ok) return;
+  }
+
+  var subjectsPayload = entries.map(function(e){
+    var old = currentConfig.subjects.filter(function(s){ return s.id && s.id === e.id; })[0];
+    return {
+      id: e.id, name: e.name, declaredTotal: old ? old.declaredTotal : 0,
+      classPairs: e.classPairs
+    };
+  });
+
+  setBtnLoading(btn, true);
+  gs.withSuccessHandler(function(){
+    gs.withSuccessHandler(function(){
+      setBtnLoading(btn, false, '저장');
+      showToast('수업 과목이 저장됐어요.');
+      loadDashboard();
+    }).withFailureHandler(function(){
+      setBtnLoading(btn, false, '저장');
+      showToast('연도/학기는 저장됐지만 과목 저장에는 실패했어요.', true);
+    }).saveSubjects(TEACHER_PW, subjectsPayload);
+  }).withFailureHandler(function(){
+    setBtnLoading(btn, false, '저장');
+    showToast('저장에 실패했어요. 다시 시도해주세요.', true);
+  }).saveTeacherConfig(TEACHER_PW, { year: year, semester: semester });
+});
+
+/* ---- 3. 수행 영역 관리 ---- */
+document.getElementById('domainSubjectSelect').addEventListener('change', function(){
+  selectedDomainSubject = this.value;
+  onDomainSubjectChange();
+});
+document.getElementById('domainGradeSelect').addEventListener('change', function(){
+  refreshDomainPanel();
+});
+
+function resolveDomainInstance(){
+  if (!currentConfig) return null;
+  var candidates = currentConfig.subjects.filter(function(s){ return s.name === selectedDomainSubject; });
+  if (candidates.length <= 1) return candidates[0] || null;
+  var grade = document.getElementById('domainGradeSelect').value;
+  var matched = candidates.filter(function(s){
+    return s.classPairs.some(function(p){ return String(p.grade) === String(grade); });
+  });
+  return matched[0] || candidates[0];
+}
+
+function populateDomainGradeSelect(){
+  var candidates = currentConfig.subjects.filter(function(s){ return s.name === selectedDomainSubject; });
+  var grades = [];
+  candidates.forEach(function(s){
+    s.classPairs.forEach(function(p){ if (grades.indexOf(p.grade) === -1) grades.push(p.grade); });
+  });
+  grades.sort(function(a,b){ return Number(a) - Number(b); });
+  var sel = document.getElementById('domainGradeSelect');
+  if (grades.length === 0){
+    sel.innerHTML = '<option value="">-</option>';
+    sel.disabled = true;
+  } else {
+    sel.disabled = false;
+    sel.innerHTML = grades.map(function(g){ return '<option value="' + g + '">' + g + '학년</option>'; }).join('');
+  }
+}
+
+function onDomainSubjectChange(){
+  if (!currentConfig) return;
+  populateDomainGradeSelect();
+  refreshDomainPanel();
+}
+function refreshDomainPanel(){
+  var subj = resolveDomainInstance();
+  document.getElementById('subjectTotalInput').value = subj && subj.declaredTotal ? subj.declaredTotal : '';
+  renderDomainList(subj ? subj.domains : []);
+}
+
+// 배점 합계 ≠ 과목 총점 경고는 평소에는 숨기고, 저장 버튼을 누를 때만 계산해서 보여준다.
+// 저장 뒤 화면이 새로 그려져도 경고가 바로 사라지지 않도록 한 번 더 이어서 보여준다.
+var mismatchPendingAfterSave = false;
+function hideMismatchBadge(){
+  document.getElementById('totalMismatchBadge').hidden = true;
+}
+function updateMismatchBadge(){
+  var maxInputs = document.querySelectorAll('#domainList .domain-max-input');
+  var sum = Array.from(maxInputs).reduce(function(s, i){ return s + (Number(i.value) || 0); }, 0);
+  var declared = Number(document.getElementById('subjectTotalInput').value) || 0;
+  var badge = document.getElementById('totalMismatchBadge');
+  if (declared > 0 && sum !== declared){
+    badge.textContent = '배점 합계(' + sum + '점)가 이 과목 총점(' + declared + '점)과 달라요';
+    badge.hidden = false;
+  } else {
+    badge.hidden = true;
+  }
+}
+
+function renderDomainList(domains){
+  lastSavedDomains = domains.map(function(d){ return d.name; });
+  var list = document.getElementById('domainList');
+  list.innerHTML = '';
+  if (domains.length === 0){
+    addDomainRow({name:'', max:'', group:''});
+  } else {
+    domains.forEach(function(d){ addDomainRow(d); });
+  }
+  if (mismatchPendingAfterSave){
+    mismatchPendingAfterSave = false;
+    updateMismatchBadge();
+  } else {
+    hideMismatchBadge();
+  }
+}
+function addDomainRow(d){
+  d = d || {name:'', max:'', group:''};
+  var displayGroup = d.group || d.name || '';
+  var displaySub = d.group ? (d.name || '') : '';
+  var list = document.getElementById('domainList');
+  var row = document.createElement('div');
+  row.className = 'domain-row';
+  row.innerHTML =
+    '<textarea class="domain-group-input" rows="1" placeholder="예: 청소년의 건강한 식생활 제안하기">' + escapeHtml(displayGroup) + '</textarea>' +
+    '<textarea class="domain-name-input" rows="1" placeholder="없으면 비워두기">' + escapeHtml(displaySub) + '</textarea>' +
+    '<input type="number" class="domain-max-input" min="0" value="' + (d.max === '' || d.max === undefined ? '' : d.max) + '" placeholder="점수" />' +
+    '<button type="button" class="domain-del" title="삭제">×</button>';
+  row.querySelector('.domain-del').addEventListener('click', function(){
+    row.remove();
+    hideMismatchBadge();
+  });
+  list.appendChild(row);
+  autosizeDomainRow(row);
+}
+// 영역명 칸: 글 높이에 맞춰 칸을 늘린다. 섹션이 닫혀 있으면 높이를 잴 수 없어서(0) 건너뛰고, 열릴 때 다시 맞춘다.
+// 한 행의 영역명·하위 영역명 두 칸은 더 긴 쪽 높이에 맞춰 같은 높이로 늘린다.
+function autosizeDomainRow(row){
+  var areas = row.querySelectorAll('textarea');
+  areas.forEach(function(el){ el.style.height = 'auto'; });
+  var h = 0;
+  areas.forEach(function(el){ h = Math.max(h, el.scrollHeight); });
+  if (h > 0) areas.forEach(function(el){ el.style.height = h + 'px'; });
+}
+function autosizeAllDomainTextareas(){
+  document.querySelectorAll('#domainList .domain-row').forEach(autosizeDomainRow);
+}
+document.getElementById('domainList').addEventListener('input', function(e){
+  if (e.target.classList.contains('domain-max-input')) hideMismatchBadge();
+  if (e.target.tagName === 'TEXTAREA'){
+    if (e.target.value.indexOf('\n') !== -1) e.target.value = e.target.value.replace(/\n+/g, ' ');
+    autosizeDomainRow(e.target.closest('.domain-row'));
+  }
+});
+document.getElementById('domainList').addEventListener('keydown', function(e){
+  if (e.target.tagName === 'TEXTAREA' && e.key === 'Enter') e.preventDefault();
+});
+window.addEventListener('resize', autosizeAllDomainTextareas);
+document.getElementById('subjectTotalInput').addEventListener('input', hideMismatchBadge);
+document.getElementById('addDomainBtn').addEventListener('click', function(){
+  addDomainRow();
+  hideMismatchBadge();
+});
+document.getElementById('saveDomainsBtn').addEventListener('click', function(){
+  var btn = this;
+  if (!selectedDomainSubject){ showToast('먼저 수업 과목을 추가해주세요.', true); return; }
+  var targetInstance = resolveDomainInstance();
+  if (!targetInstance){ showToast('해당 과목·학년을 찾을 수 없어요.', true); return; }
+
+  var rows = document.querySelectorAll('#domainList .domain-row');
+  var domains = Array.from(rows).map(function(row){
+    var groupVal = row.querySelector('.domain-group-input').value.trim();
+    var subVal = row.querySelector('.domain-name-input').value.trim();
+    var name = subVal || groupVal;
+    var group = subVal ? groupVal : '';
+    return {
+      name: name,
+      max: Number(row.querySelector('.domain-max-input').value) || 0,
+      group: group
+    };
+  }).filter(function(d){ return d.name; });
+
+  if (domains.length === 0){ showToast('영역을 하나 이상 입력해주세요.', true); return; }
+  var newNames = domains.map(function(d){ return d.name; });
+  var removed = lastSavedDomains.filter(function(name){ return newNames.indexOf(name) === -1; });
+  if (removed.length > 0){
+    var ok = confirm('다음 영역을 삭제하면 해당 점수도 함께 삭제돼요:\n' + removed.join(', ') + '\n\n계속할까요?');
+    if (!ok) return;
+  }
+
+  updateMismatchBadge();
+  mismatchPendingAfterSave = !document.getElementById('totalMismatchBadge').hidden;
+
+  var newDeclaredTotal = Number(document.getElementById('subjectTotalInput').value) || 0;
+  var subjectsPayload = currentConfig.subjects.map(function(s){
+    var isTarget = s.id === targetInstance.id;
+    return {
+      id: s.id, name: s.name,
+      declaredTotal: isTarget ? newDeclaredTotal : s.declaredTotal,
+      classPairs: s.classPairs
+    };
+  });
+
+  setBtnLoading(btn, true);
+  gs.withSuccessHandler(function(){
+    gs.withSuccessHandler(function(){
+      setBtnLoading(btn, false, '저장');
+      showToast('수행 영역이 저장됐어요.');
+      loadDashboard();
+    }).withFailureHandler(function(){
+      setBtnLoading(btn, false, '저장');
+      showToast('영역은 저장됐지만 "총점" 저장에는 실패했어요.', true);
+    }).saveSubjects(TEACHER_PW, subjectsPayload);
+  }).withFailureHandler(function(){
+    setBtnLoading(btn, false, '저장');
+    showToast('저장에 실패했어요. 다시 시도해주세요.', true);
+  }).saveDomains(TEACHER_PW, targetInstance.id, domains);
+});
+
+/* ---- 4. 응시·결시 관리 ---- */
+document.getElementById('attendanceSubjectSelect').addEventListener('change', function(){
+  selectedAttendanceSubject = this.value;
+  onAttendanceSubjectChange();
+});
+function onAttendanceSubjectChange(){
+  document.getElementById('attendancePickGrade').innerHTML = '<option value="">선택</option>';
+  document.getElementById('attendancePickClass').innerHTML = '<option value="">선택</option>';
+  document.getElementById('attendanceTableBody').innerHTML =
+    '<tr><td colspan="99"><div class="empty-state">과목·학년·반을 선택하고 불러오기를 눌러주세요</div></td></tr>';
+  document.getElementById('attendanceTableHead').innerHTML = '';
+  renderDomainMemos([], {});
+  document.getElementById('absentSummary').innerHTML = '';
+  document.getElementById('attendanceStats').innerHTML = '';
+  document.getElementById('saveAttendanceBtn').disabled = true;
+  currentAttendanceCtx = null;
+  if (!selectedAttendanceSubject || !currentConfig) return;
+
+  var matchingSubjects = currentConfig.subjects.filter(function(s){ return s.name === selectedAttendanceSubject; });
+  var byGrade = {};
+  matchingSubjects.forEach(function(subj){
+    subj.classPairs.forEach(function(p){
+      byGrade[p.grade] = byGrade[p.grade] || [];
+      if (byGrade[p.grade].indexOf(p.cls) === -1) byGrade[p.grade].push(p.cls);
+    });
+  });
+  var grades = Object.keys(byGrade).sort(function(a,b){ return Number(a)-Number(b); });
+
+  if (grades.length === 0){
+    document.getElementById('attendanceTableBody').innerHTML =
+      '<tr><td colspan="99"><div class="empty-state">이 과목을 듣는 학년·반이 아직 없어요. "수업 과목 설정"에서 학년·반을 추가해주세요.</div></td></tr>';
+    return;
+  }
+
+  var gSel = document.getElementById('attendancePickGrade');
+  gSel.innerHTML = '<option value="">선택</option>' + grades.map(function(g){ return '<option value="'+g+'">'+g+'학년</option>'; }).join('');
+  gSel.onchange = function(){
+    var classes = (byGrade[gSel.value] || []).slice().sort(function(a,b){ return Number(a)-Number(b); });
+    document.getElementById('attendancePickClass').innerHTML = '<option value="">선택</option>' + classes.map(function(c){ return '<option value="'+c+'">'+c+'반</option>'; }).join('');
+  };
+}
+
+document.getElementById('loadAttendanceBtn').addEventListener('click', function(){
+  var subject = selectedAttendanceSubject;
+  var g = document.getElementById('attendancePickGrade').value;
+  var c = document.getElementById('attendancePickClass').value;
+  if (!subject){ showToast('먼저 수업 과목을 추가해주세요.', true); return; }
+  if (!g || !c){ showToast('학년과 반을 선택해주세요.', true); return; }
+  var body = document.getElementById('attendanceTableBody');
+  body.innerHTML = '<tr><td colspan="99"><div class="empty-state">불러오는 중...</div></td></tr>';
+  document.getElementById('saveAttendanceBtn').disabled = true;
+
+  gs.withSuccessHandler(function(res){
+    if (!res.domains || res.domains.length === 0){
+      currentAttendanceCtx = null;
+      document.getElementById('attendanceTableHead').innerHTML = '';
+      body.innerHTML = '<tr><td colspan="99"><div class="empty-state">영역을 먼저 입력해주세요. "수행 영역 관리"에서 이 과목의 영역을 추가하고 저장해주세요.</div></td></tr>';
+      document.getElementById('attendanceStats').innerHTML = '';
+      document.getElementById('absentSummary').innerHTML = '';
+      renderDomainMemos([], {});
+      document.getElementById('saveAttendanceBtn').disabled = true;
+      showToast('영역을 먼저 입력해주세요.', true);
+      return;
+    }
+    renderAttendanceTable(res, subject, g, c);
+  }).withFailureHandler(function(){
+    body.innerHTML = '<tr><td colspan="99"><div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div></td></tr>';
+  }).getAttendanceForClass(TEACHER_PW, subject, g, c);
+});
+
+function renderAttendanceTable(res, subject, g, c){
+  // 영역 상태(완료/이번 수행/예정)는 수행 영역 관리에서 정한 그 반의 값을 그대로 쓴다.
+  currentAttendanceCtx = { subject:subject, grade:g, class:c, domains:res.domains, statuses:res.statuses || {} };
+  renderDomainMemos(res.domains, res.memos || {});
+  var table = document.getElementById('attendanceTable');
+  var existingColgroup = table.querySelector('colgroup');
+  if (existingColgroup) existingColgroup.remove();
+  table.insertAdjacentHTML('afterbegin', buildColgroup(res.domains.length));
+
+  var head = document.getElementById('attendanceTableHead');
+  var body = document.getElementById('attendanceTableBody');
+  head.innerHTML = buildAttendanceHeader(res.domains) + buildStatusHeaderRow(res.domains, currentAttendanceCtx.statuses);
+
+  if (res.students.length === 0){
+    body.innerHTML = '<tr><td colspan="' + (res.domains.length+2) + '"><div class="empty-state">이 과목의 이 학년·반에 등록된 학생이 없어요. "학생 명단 관리"에서 학생을 추가해주세요.</div></td></tr>';
+    document.getElementById('saveAttendanceBtn').disabled = true;
+    document.getElementById('absentSummary').innerHTML = '';
+    document.getElementById('attendanceStats').innerHTML = '';
+    return;
+  }
+
+  body.innerHTML = '';
+  res.students.forEach(function(stu){
+    var tr = document.createElement('tr');
+    var cells = '<td class="num-cell">' + escapeHtml(stu.number) + '번</td><td class="name-cell">' + escapeHtml(stu.name) + '</td>';
+    res.domains.forEach(function(d){
+      var isAbsent = !!stu.absent[d.name];
+      var hasScore = !!stu.hasScore[d.name];
+      cells += '<td class="attend-cell"><input type="checkbox" data-domain="' + escapeHtml(d.name) +
+        '" data-has-score="' + (hasScore ? '1' : '0') + '" data-initial="' + (isAbsent ? '1' : '0') + '"' +
+        (isAbsent ? ' checked' : '') + ' title="' + (hasScore ? '이미 입력된 점수가 있어요' : '') + '" /></td>';
+    });
+    tr.innerHTML = cells;
+    tr.dataset.number = stu.number;
+    tr.dataset.name = stu.name;
+    body.appendChild(tr);
+  });
+  document.getElementById('saveAttendanceBtn').disabled = false;
+  document.getElementById('attendanceSavedHint').textContent = '';
+  updateAbsentSummary();
+}
+
+var DOMAIN_STATUSES = ['완료', '이번 수행', '예정'];
+
+// 상태 드롭다운의 색은 data-status 값으로 정해지므로, 값이 바뀌면 함께 갱신한다.
+document.addEventListener('change', function(e){
+  if (e.target.matches && e.target.matches('select[data-status]')) e.target.dataset.status = e.target.value;
+});
+
+// 응시·결시 관리에서 저장한 그 반의 상태를 화면이 들고 있는 설정(currentConfig)에도 반영해서 수행 영역 관리와 맞춘다.
+// 응시·결시 관리와 반별 점수 입력 표가 함께 쓰는 머리글: 번호·이름, 그리고 상위 그룹이 없는(=하위 영역이 없는) 영역은 윗 행과 합쳐서(rowspan) 한 칸으로 보여준다.
+function buildAttendanceHeader(domains){
+  var hasGroup = domains.some(function(d){ return d.group; });
+  var rs = hasGroup ? ' rowspan="2"' : '';
+  var row1 = '<th' + rs + '>번호</th><th' + rs + '>이름</th>';
+  var row2 = '';
+  var i = 0;
+  while (i < domains.length){
+    var d = domains[i];
+    if (!d.group){
+      row1 += '<th' + rs + '>' + escapeHtml(d.name) + '<span class="th-max">(' + d.max + '점)</span></th>';
+      i++;
+    } else {
+      var j = i;
+      while (j < domains.length && domains[j].group === d.group) j++;
+      row1 += '<th colspan="' + (j - i) + '">' + escapeHtml(d.group) + '</th>';
+      for (var k = i; k < j; k++){
+        row2 += '<th class="th-sub">' + escapeHtml(domains[k].name) + '<span class="th-max">(' + domains[k].max + '점)</span></th>';
+      }
+      i = j;
+    }
+  }
+  return '<tr>' + row1 + '</tr>' + (hasGroup ? '<tr>' + row2 + '</tr>' : '');
+}
+
+// 영역별 메모: 영역마다 한 줄씩. 글이 길어지면 칸이 세로로 늘어난다. 반마다 따로 저장된다.
+function autosizeMemo(el){
+  el.style.height = 'auto';
+  if (el.scrollHeight > 0) el.style.height = el.scrollHeight + 'px';
+}
+function renderDomainMemos(domains, memos){
+  var box = document.getElementById('attendanceDomainMemosBox');
+  var list = document.getElementById('attendanceDomainMemos');
+  if (!domains || domains.length === 0){
+    box.hidden = true;
+    list.innerHTML = '';
+    return;
+  }
+  box.hidden = false;
+  // 기본은 "이번 수행" 상태인 영역의 메모만 보인다. 드롭다운에서 전체나 특정 영역을 고를 수 있다.
+  document.getElementById('attendanceMemoFilter').innerHTML =
+    '<option value="__current__">이번 수행 영역</option><option value="__all__">전체 영역</option>' +
+    domains.map(function(d){ return '<option value="' + escapeHtml(d.name) + '">' + escapeHtml(d.name) + '</option>'; }).join('');
+  list.innerHTML = domains.map(function(d){
+    return '<div class="domain-memo-row" data-domain="' + escapeHtml(d.name) + '"><span class="dm-name">' + escapeHtml(d.name) + '</span>' +
+      '<textarea rows="1" data-domain="' + escapeHtml(d.name) + '" aria-label="' + escapeHtml(d.name) + ' 메모" placeholder="이 영역에 대한 메모">' +
+      escapeHtml(memos[d.name] || '') + '</textarea></div>';
+  }).join('');
+  applyMemoFilter();
+}
+// 고른 영역의 메모 줄만 보여준다. 숨겨진 줄의 글도 저장할 때는 그대로 함께 저장된다.
+function applyMemoFilter(){
+  var filter = document.getElementById('attendanceMemoFilter').value;
+  var statuses = (currentAttendanceCtx && currentAttendanceCtx.statuses) || {};
+  var shown = 0;
+  document.querySelectorAll('#attendanceDomainMemos .domain-memo-row').forEach(function(row){
+    var name = row.dataset.domain;
+    var visible = filter === '__all__' || (filter === '__current__' ? statuses[name] === '이번 수행' : name === filter);
+    row.hidden = !visible;
+    if (visible){ shown++; autosizeMemo(row.querySelector('textarea')); }
+  });
+  document.getElementById('attendanceMemoEmpty').hidden = !(filter === '__current__' && shown === 0);
+}
+document.getElementById('attendanceMemoFilter').addEventListener('change', applyMemoFilter);
+function readDomainMemos(){
+  var out = {};
+  document.querySelectorAll('#attendanceDomainMemos textarea').forEach(function(el){
+    out[el.dataset.domain] = el.value.trim();
+  });
+  return out;
+}
+document.getElementById('attendanceDomainMemos').addEventListener('input', function(e){
+  if (e.target.tagName === 'TEXTAREA') autosizeMemo(e.target);
+});
+
+// 영역별 상태(완료 / 이번 수행 / 예정)는 표 머리글의 각 영역 아래에서 고른다. 반마다 따로 저장된다.
+function buildStatusHeaderRow(domains, statuses){
+  statuses = statuses || {};
+  return '<tr class="status-head-row"><th colspan="2" class="status-head-label">영역 상태</th>' +
+    domains.map(function(d){
+      var cur = statuses[d.name] || '예정';
+      return '<th class="status-head-cell"><select class="status-select" data-status="' + cur + '" data-domain="' + escapeHtml(d.name) +
+        '" aria-label="' + escapeHtml(d.name) + ' 상태">' +
+        DOMAIN_STATUSES.map(function(s){ return '<option value="' + s + '"' + (s === cur ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+        '</select></th>';
+    }).join('') + '</tr>';
+}
+document.getElementById('attendanceTableHead').addEventListener('change', function(e){
+  if (!e.target.classList.contains('status-select') || !currentAttendanceCtx) return;
+  currentAttendanceCtx.statuses[e.target.dataset.domain] = e.target.value;
+  updateAttendanceStats();
+  applyMemoFilter();
+});
+
+function updateAttendanceStats(){
+  var box = document.getElementById('attendanceStats');
+  var rows = document.querySelectorAll('#attendanceTableBody tr[data-number]');
+  if (!currentAttendanceCtx || !currentAttendanceCtx.domains || rows.length === 0){
+    box.innerHTML = '';
+    return;
+  }
+  var total = rows.length;
+  var statuses = currentAttendanceCtx.statuses || {};
+  var shown = currentAttendanceCtx.domains.filter(function(d){
+    return statuses[d.name] === '완료' || statuses[d.name] === '이번 수행';
+  });
+  var absentBy = {};
+  document.querySelectorAll('#attendanceTableBody input[data-domain]:checked').forEach(function(input){
+    absentBy[input.dataset.domain] = (absentBy[input.dataset.domain] || 0) + 1;
+  });
+  box.innerHTML = '<p class="attend-stats-title">' + escapeHtml(currentAttendanceCtx.grade) + '학년 ' +
+      escapeHtml(currentAttendanceCtx.class) + '반 (총 ' + total + '명)</p>' +
+    '<div class="attend-stats-row head"><span>영역명</span><span>응시 인원</span><span>결시 인원</span></div>' +
+    (shown.length === 0 ? '<div class="attend-stats-empty">"완료" 또는 "이번 수행" 상태인 영역이 아직 없어요.</div>' : '') +
+    shown.map(function(d){
+      var absent = absentBy[d.name] || 0;
+      return '<div class="attend-stats-row"><span>' + escapeHtml(d.name) + '</span><span>' + (total - absent) +
+        '명</span><span' + (absent ? ' class="has-absent"' : '') + '>' + absent + '명</span></div>';
+    }).join('');
+}
+
+function updateAbsentSummary(){
+  updateAttendanceStats();
+  var container = document.getElementById('absentSummary');
+  var byDomain = {};
+  document.querySelectorAll('#attendanceTableBody tr').forEach(function(tr){
+    tr.querySelectorAll('input[data-domain]:checked').forEach(function(input){
+      var d = input.dataset.domain;
+      byDomain[d] = byDomain[d] || [];
+      byDomain[d].push(tr.dataset.name);
+    });
+  });
+  var domainNames = Object.keys(byDomain);
+  if (domainNames.length === 0){
+    container.innerHTML = '';
+    return;
+  }
+  container.innerHTML = '<p class="absent-summary-title">결시로 체크된 학생</p>' +
+    '<div class="absent-summary-list">' +
+    domainNames.map(function(d){
+      return '<div class="absent-summary-item"><b>' + escapeHtml(d) + '</b>: ' + byDomain[d].map(escapeHtml).join(', ') + '</div>';
+    }).join('') +
+    '</div>';
+}
+document.getElementById('attendanceTableBody').addEventListener('change', function(e){
+  if (e.target.matches('input[data-domain]')) updateAbsentSummary();
+});
+
+document.getElementById('saveAttendanceBtn').addEventListener('click', function(){
+  if (!currentAttendanceCtx) return;
+  var btn = this;
+  var rows = document.querySelectorAll('#attendanceTableBody tr');
+  var overwrites = [];
+  var students = Array.from(rows).map(function(tr){
+    var absent = {};
+    tr.querySelectorAll('input[data-domain]').forEach(function(input){
+      absent[input.dataset.domain] = input.checked;
+      if (input.checked && input.dataset.hasScore === '1' && input.dataset.initial !== '1'){
+        overwrites.push(tr.dataset.name + ' - ' + input.dataset.domain);
+      }
+    });
+    return { number: tr.dataset.number, name: tr.dataset.name, absent: absent };
+  });
+
+  if (overwrites.length > 0){
+    var ok = confirm('다음 항목은 이미 입력된 점수가 있어요. 결시로 표시하면 그 점수는 사라져요:\n' + overwrites.join('\n') + '\n\n계속할까요?');
+    if (!ok) return;
+  }
+
+  var memos = readDomainMemos();
+
+  setBtnLoading(btn, true);
+  gs.withSuccessHandler(function(){
+    setBtnLoading(btn, false, '저장');
+    showToast('응시·결시 현황이 저장됐어요.');
+    document.getElementById('attendanceSavedHint').textContent = '마지막 저장: 방금 전';
+  }).withFailureHandler(function(){
+    setBtnLoading(btn, false, '저장');
+    showToast('저장에 실패했어요. 다시 시도해주세요.', true);
+  }).saveAttendanceForClass(TEACHER_PW, currentAttendanceCtx.subject, currentAttendanceCtx.grade, currentAttendanceCtx.class, students, memos, currentAttendanceCtx.statuses);
+});
+
+/* ---- 5. 반별 점수 입력 표 ---- */
+document.getElementById('scoreSubjectSelect').addEventListener('change', function(){
+  selectedScoreSubject = this.value;
+  onScoreSubjectChange();
+});
+function onScoreSubjectChange(){
+  document.getElementById('pickGrade').innerHTML = '<option value="">선택</option>';
+  document.getElementById('pickClass').innerHTML = '<option value="">선택</option>';
+  document.getElementById('scoreTableBody').innerHTML =
+    '<tr><td colspan="99"><div class="empty-state">과목·학년·반을 선택하고 불러오기를 눌러주세요</div></td></tr>';
+  document.getElementById('scoreTableHead').innerHTML = '';
+  document.getElementById('saveScoresBtn').disabled = true;
+  currentClassCtx = null;
+  if (!selectedScoreSubject || !currentConfig) return;
+
+  // 이름이 같은 과목 인스턴스가 여러 개일 수 있으므로 모든 인스턴스의 학년·반을 합쳐서 보여준다.
+  // (실제로 어떤 인스턴스인지는 학년·반이 정해지면 서버가 알아서 찾는다)
+  var matchingSubjects = currentConfig.subjects.filter(function(s){ return s.name === selectedScoreSubject; });
+  var byGrade = {};
+  matchingSubjects.forEach(function(subj){
+    subj.classPairs.forEach(function(p){
+      byGrade[p.grade] = byGrade[p.grade] || [];
+      if (byGrade[p.grade].indexOf(p.cls) === -1) byGrade[p.grade].push(p.cls);
+    });
+  });
+  var grades = Object.keys(byGrade).sort(function(a,b){ return Number(a)-Number(b); });
+
+  if (grades.length === 0){
+    document.getElementById('scoreTableBody').innerHTML =
+      '<tr><td colspan="99"><div class="empty-state">이 과목을 듣는 학년·반이 아직 없어요. "수업 과목 설정"에서 학년·반을 추가해주세요.</div></td></tr>';
+    return;
+  }
+
+  var gSel = document.getElementById('pickGrade');
+  gSel.innerHTML = '<option value="">선택</option>' + grades.map(function(g){ return '<option value="'+g+'">'+g+'학년</option>'; }).join('');
+  gSel.onchange = function(){
+    var classes = (byGrade[gSel.value] || []).slice().sort(function(a,b){ return Number(a)-Number(b); });
+    document.getElementById('pickClass').innerHTML = '<option value="">선택</option>' + classes.map(function(c){ return '<option value="'+c+'">'+c+'반</option>'; }).join('');
+  };
+}
+
+document.getElementById('loadClassBtn').addEventListener('click', function(){
+  var subject = selectedScoreSubject;
+  var g = document.getElementById('pickGrade').value;
+  var c = document.getElementById('pickClass').value;
+  if (!subject){ showToast('과목을 선택해주세요.', true); return; }
+  if (!g || !c){ showToast('학년과 반을 선택해주세요.', true); return; }
+  var body = document.getElementById('scoreTableBody');
+  body.innerHTML = '<tr><td colspan="99"><div class="empty-state">불러오는 중...</div></td></tr>';
+  document.getElementById('saveScoresBtn').disabled = true;
+
+  gs.withSuccessHandler(function(res){
+    if (!res.domains || res.domains.length === 0){
+      currentClassCtx = null;
+      document.getElementById('scoreTableHead').innerHTML = '';
+      body.innerHTML = '<tr><td colspan="99"><div class="empty-state">영역을 먼저 입력해주세요. "수행 영역 관리"에서 이 과목의 영역을 추가하고 저장해주세요.</div></td></tr>';
+      document.getElementById('saveScoresBtn').disabled = true;
+      showToast('영역을 먼저 입력해주세요.', true);
+      return;
+    }
+    renderScoreTable(res, subject, g, c);
+  }).withFailureHandler(function(){
+    body.innerHTML = '<tr><td colspan="99"><div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div></td></tr>';
+  }).getClassScores(TEACHER_PW, subject, g, c);
+});
+
+function buildColgroup(domainCount){
+  return '<colgroup><col style="width:52px"><col style="width:64px">' +
+    new Array(domainCount).fill('<col>').join('') + '</colgroup>';
+}
+
+function renderScoreTable(res, subject, g, c){
+  currentClassCtx = { subject:subject, grade:g, class:c, domains: res.domains };
+  var table = document.getElementById('scoreTable');
+  var existingColgroup = table.querySelector('colgroup');
+  if (existingColgroup) existingColgroup.remove();
+  table.insertAdjacentHTML('afterbegin', buildColgroup(res.domains.length));
+
+  var head = document.getElementById('scoreTableHead');
+  var body = document.getElementById('scoreTableBody');
+
+  head.innerHTML = buildAttendanceHeader(res.domains);
+
+  if (res.students.length === 0){
+    body.innerHTML = '<tr><td colspan="' + (res.domains.length+2) + '"><div class="empty-state">이 학년·반에 등록된 학생이 없어요. "학생 명단 관리"에서 학생을 추가해주세요.</div></td></tr>';
+    document.getElementById('saveScoresBtn').disabled = true;
+    return;
+  }
+
+  body.innerHTML = '';
+  res.students.forEach(function(stu){
+    var tr = document.createElement('tr');
+    var cells = '<td class="num-cell">' + escapeHtml(stu.number) + '번</td><td class="name-cell">' + escapeHtml(stu.name) + '</td>';
+    res.domains.forEach(function(d){
+      var v = stu.scores[d.name];
+      if (String(v).indexOf(ABSENT_MARKER) === 0){
+        cells += '<td class="score-cell absent-cell"><span class="absent-tag" title="응시·결시 관리에서 결시로 표시됨">결시</span></td>';
+      } else {
+        cells += '<td class="score-cell"><input type="number" min="0" max="' + d.max + '" data-domain="' +
+          escapeHtml(d.name) + '" value="' + (v === '' ? '' : Number(v)) + '" placeholder="-" /></td>';
+      }
+    });
+    tr.innerHTML = cells;
+    tr.dataset.number = stu.number;
+    tr.dataset.name = stu.name;
+    body.appendChild(tr);
+  });
+  document.getElementById('saveScoresBtn').disabled = false;
+  document.getElementById('lastSavedHint').textContent = '';
+}
+
+document.getElementById('scoreTableBody').addEventListener('keydown', function(e){
+  if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  var input = e.target;
+  if (!input.matches('.score-cell input')) return;
+  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+  var td = input.closest('td');
+  var tr = td.parentElement;
+  var cellIndex = Array.prototype.indexOf.call(tr.children, td);
+  var rows = Array.from(document.querySelectorAll('#scoreTableBody tr')).filter(function(r){
+    return r.querySelector('.score-cell input');
+  });
+  var rowIndex = rows.indexOf(tr);
+  var targetRow = tr, targetCellIndex = cellIndex;
+  if (e.key === 'ArrowDown') targetRow = rows[rowIndex + 1];
+  else if (e.key === 'ArrowUp') targetRow = rows[rowIndex - 1];
+  else if (e.key === 'ArrowLeft') targetCellIndex = cellIndex - 1;
+  else if (e.key === 'ArrowRight') targetCellIndex = cellIndex + 1;
+  if (!targetRow) return;
+  var targetCell = targetRow.children[targetCellIndex];
+  var targetInput = targetCell ? targetCell.querySelector('input') : null;
+  if (!targetInput) return;
+  e.preventDefault();
+  targetInput.focus();
+  targetInput.select();
+});
+
+document.getElementById('saveScoresBtn').addEventListener('click', function(){
+  if (!currentClassCtx) return;
+  var btn = this;
+  var rows = document.querySelectorAll('#scoreTableBody tr');
+  var students = Array.from(rows).map(function(tr){
+    var scores = {};
+    tr.querySelectorAll('input[data-domain]').forEach(function(input){
+      scores[input.dataset.domain] = input.value === '' ? '' : Number(input.value);
+    });
+    return { number: tr.dataset.number, name: tr.dataset.name, scores: scores };
+  });
+
+  setBtnLoading(btn, true);
+  gs.withSuccessHandler(function(res){
+    setBtnLoading(btn, false, '전체 저장');
+    showToast('점수가 저장됐어요.');
+    document.getElementById('lastSavedHint').textContent = '마지막 저장: 방금 전';
+  }).withFailureHandler(function(){
+    setBtnLoading(btn, false, '전체 저장');
+    showToast('저장에 실패했어요. 다시 시도해주세요.', true);
+  }).saveClassScores(TEACHER_PW, currentClassCtx.subject, currentClassCtx.grade, currentClassCtx.class, students);
+});
+
+/* ---- 6. 결시자 수행안내 ---- */
+document.getElementById('noticeSubjectSelect').addEventListener('change', function(){
+  selectedNoticeSubject = this.value;
+  onNoticeSubjectChange();
+});
+function onNoticeSubjectChange(){
+  noticeData = null;
+  var domainNames = [];
+  if (currentConfig){
+    currentConfig.subjects.filter(function(s){ return s.name === selectedNoticeSubject; }).forEach(function(s){
+      s.domains.forEach(function(d){ if (domainNames.indexOf(d.name) === -1) domainNames.push(d.name); });
+    });
+  }
+  document.getElementById('noticeDomainSelect').innerHTML = '<option value="">전체 영역</option>' + domainNames.map(function(d){
+    return '<option value="' + escapeHtml(d) + '">' + escapeHtml(d) + '</option>';
+  }).join('');
+  document.getElementById('noticeList').innerHTML = '<div class="empty-state">과목을 고르고 결시자 불러오기를 눌러주세요</div>';
+  document.getElementById('noticeCount').textContent = '';
+  document.getElementById('makeNoticePdfBtn').disabled = true;
+}
+
+document.getElementById('loadNoticeBtn').addEventListener('click', function(){
+  var subject = selectedNoticeSubject;
+  if (!subject){ showToast('먼저 수업 과목을 추가해주세요.', true); return; }
+  var list = document.getElementById('noticeList');
+  list.innerHTML = '<div class="empty-state">불러오는 중...</div>';
+  document.getElementById('makeNoticePdfBtn').disabled = true;
+
+  gs.withSuccessHandler(function(res){
+    noticeData = res;
+    renderNoticeList();
+  }).withFailureHandler(function(){
+    list.innerHTML = '<div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div>';
+  }).getAbsentees(TEACHER_PW, subject);
+});
+var NOTICE_MEMO_MIN_W = 150;
+var NOTICE_MEMO_MAX_W = NOTICE_MEMO_MIN_W * 4;
+var noticeMemoCtx = document.createElement('canvas').getContext('2d');
+function autosizeNoticeMemo(){
+  var ta = document.getElementById('noticeMemo');
+  var field = document.getElementById('noticeMemoField');
+  var cs = getComputedStyle(ta);
+  noticeMemoCtx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+  var widest = 0;
+  ta.value.split('\n').forEach(function(line){
+    widest = Math.max(widest, noticeMemoCtx.measureText(line).width);
+  });
+  var extra = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+  var rowW = field.parentElement.clientWidth || NOTICE_MEMO_MAX_W;
+  var w = Math.min(NOTICE_MEMO_MAX_W, rowW, Math.max(NOTICE_MEMO_MIN_W, Math.ceil(widest + extra + 4)));
+  field.style.width = w + 'px';
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+document.getElementById('noticeMemo').addEventListener('input', autosizeNoticeMemo);
+
+document.getElementById('noticeDomainSelect').addEventListener('change', function(){
+  if (noticeData) renderNoticeList();
+});
+
+function currentNoticeRows(){
+  if (!noticeData) return [];
+  var filter = document.getElementById('noticeDomainSelect').value;
+  return noticeData.rows.filter(function(r){ return !filter || r.domain === filter; });
+}
+function renderNoticeList(){
+  var rows = currentNoticeRows();
+  var list = document.getElementById('noticeList');
+  if (rows.length === 0){
+    list.innerHTML = '<div class="empty-state">결시로 체크된 학생이 없어요. "응시·결시 관리"에서 결시를 체크하고 저장해주세요.</div>';
+  } else {
+    list.innerHTML = rows.map(function(r){
+      return '<div class="notice-item"><span class="ni-domain">' + escapeHtml(r.domain) + '</span><span class="ni-who">' +
+        escapeHtml(r.grade) + '학년 ' + escapeHtml(r.cls) + '반 ' + escapeHtml(r.number) + '번 ' + escapeHtml(r.name) + '</span></div>';
+    }).join('');
+  }
+  var pages = Math.ceil(rows.length / 9);
+  document.getElementById('noticeCount').textContent = rows.length ? '총 ' + rows.length + '명 · A4 ' + pages + '장' : '';
+  document.getElementById('makeNoticePdfBtn').disabled = rows.length === 0;
+}
+
+function formatKoreanDate(str){
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(str || '');
+  if (!m) return '';
+  var d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return m[1] + '년 ' + Number(m[2]) + '월 ' + Number(m[3]) + '일 ' + ['일','월','화','수','목','금','토'][d.getDay()] + '요일';
+}
+
+function buildNoticeCell(r, subject, dateText, time, place, memo){
+  return '<div class="notice-cell">' +
+    '<div class="nc-row"><span class="nc-k">과목</span><span class="nc-v">' + escapeHtml(subject) + '</span></div>' +
+    '<div class="nc-row"><span class="nc-k">수행영역</span><span class="nc-v">' + escapeHtml(r.domain) + '</span></div>' +
+    '<div class="nc-badge">수행 안 본 사람</div>' +
+    '<div class="nc-date">' + (dateText ? escapeHtml(dateText) : '&nbsp;&nbsp;&nbsp;&nbsp;년 &nbsp;&nbsp;월 &nbsp;&nbsp;일 &nbsp;&nbsp;요일') + '</div>' +
+    '<div class="nc-line"><span>시간:</span><span class="nc-fill">' + escapeHtml(time) + '</span></div>' +
+    '<div class="nc-line"><span>장소:</span><span class="nc-fill">' + escapeHtml(place) + '</span></div>' +
+    (memo ? '<div class="nc-memo">' + escapeHtml(memo) + '</div>' : '') +
+    '<div class="nc-class">' + escapeHtml(r.grade) + '학년 ' + escapeHtml(r.cls) + '반 ' + escapeHtml(r.number) + '번</div>' +
+    '<div class="nc-name">' + escapeHtml(r.name) + '</div>' +
+  '</div>';
+}
+
+document.getElementById('makeNoticePdfBtn').addEventListener('click', function(){
+  var rows = currentNoticeRows();
+  if (rows.length === 0) return;
+  var dateText = formatKoreanDate(document.getElementById('noticeDate').value);
+  var time = document.getElementById('noticeTime').value.trim();
+  var place = document.getElementById('noticePlace').value.trim();
+  var memo = document.getElementById('noticeMemo').value.trim();
+
+  var pages = '';
+  for (var i = 0; i < rows.length; i += 9){
+    var cells = rows.slice(i, i + 9).map(function(r){ return buildNoticeCell(r, selectedNoticeSubject, dateText, time, place, memo); });
+    while (cells.length < 9) cells.push('<div class="notice-cell blank"></div>');
+    pages += '<div class="notice-page">' + cells.join('') + '</div>';
+  }
+  document.getElementById('noticePrintArea').innerHTML = pages;
+  showToast('인쇄 창에서 "PDF로 저장"을 선택해주세요.');
+  setTimeout(function(){ window.print(); }, 150);
+});
+
+/* ---- 7. 시트 안내 바 ---- */
+document.getElementById('openSheetBtn').addEventListener('click', function(){
+  // 팝업 차단을 피하려면 클릭과 동시에 창을 열고, URL은 나중에 채워야 한다.
+  var win = window.open('', '_blank');
+  gs.withSuccessHandler(function(url){
+    if (win) win.location.href = url; else window.open(url, '_blank');
+  }).withFailureHandler(function(){
+    if (win) win.close();
+    showToast('시트 링크를 가져오지 못했어요.', true);
+  }).getSheetUrl(TEACHER_PW);
+});
+</script>
+</body>
+</html>
