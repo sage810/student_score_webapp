@@ -15,7 +15,7 @@
  *   진행상태 : 과목ID | 학년 | 반 | 영역명 | 상태 | 메모  — 영역별 "메모"는 응시·결시 관리의 "영역별 메모". 반마다 다른 진도를 관리. 상태 = "완료" / "이번 수행" / "예정". 응시·결시 관리에서 영역별로 정하고, 학생 조회 화면의 "이번 수행"도 여기의 "이번 수행"을 따름. 그 반에 기록이 없는 영역은 "예정"
  *   영역  : 과목ID | 영역명 | 배점 | 그룹  (그룹이 같으면 화면에서 한 묶음으로 표시. "과목명"이 아니라 "과목ID" 기준이라 이름이 같은 과목끼리도 안 섞임)
  *   명단  : 학년 | 반 | 번호 | 이름  — 학급별 학생 (과목 열 없음). 수업 과목 설정에서 그 학년·반을 추가한 과목의 응시·결시 관리, 반별 점수 입력 표, 결시자 수행안내에 자동 연결됨 (교사 화면의 "학생 명단 관리"에서도 편집 가능)
- *   점수_과목명 : 과목명 | 학년 | 반 | 번호 | 이름 | <영역1> | <영역2> | ...  (과목명이 다르면 시트도 다름 — 예: "점수_기술·가정". 없으면 처음 저장할 때 자동으로 만들어지고, 예전 통합 "점수" 시트에 그 과목 기록이 있으면 자동으로 옮겨 옴. 시트 이름에 못 쓰는 글자 : \ / ? * [ ] 는 _ 로 바뀜. 빈 칸 = 미실시, "결시" = 응시·결시 관리에서 결시로 표시한 항목 — 총점 계산은 미실시와 동일하게 취급. 예전에 저장된 "결시:날짜" 형식도 결시로 인식하며, 저장하면 "결시"로 정리됨)
+ *   점수_과목명 : 과목명 | 학년 | 반 | 번호 | 이름 | <영역1> | <영역2> | ... | 합계  ("합계"는 맨 오른쪽 열, 영역 점수의 SUM 수식 — 결시·빈 칸은 합에서 빠짐. 영역이 추가되어도 합계 열 앞에 끼워져 항상 맨 오른쪽에 있음. 영역 이름을 "합계"로 짓지 말 것)  (과목명이 다르면 시트도 다름 — 예: "점수_기술·가정". 없으면 처음 저장할 때 자동으로 만들어지고, 예전 통합 "점수" 시트에 그 과목 기록이 있으면 자동으로 옮겨 옴. 시트 이름에 못 쓰는 글자 : \ / ? * [ ] 는 _ 로 바뀜. 빈 칸 = 미실시, "결시" = 응시·결시 관리에서 결시로 표시한 항목 — 총점 계산은 미실시와 동일하게 취급. 예전에 저장된 "결시:날짜" 형식도 결시로 인식하며, 저장하면 "결시"로 정리됨)
  *   (점수_과목명·결시명단_과목명 시트는 저장할 때마다 학년 → 반 → 번호 오름차순으로 정렬됨. 반·번호는 숫자로 비교해서 2반이 10반보다 앞)
  *   결시명단_과목명 : 영역 | 학년 | 반 | 번호 | 이름  — 그 과목에서 결시로 체크된 학생 목록 (과목마다 별도 시트. 응시·결시 관리에서 저장할 때마다 그 반·그 영역들 범위 안에서 다시 채워짐)
  */
@@ -110,7 +110,7 @@ function ensureSheets_() {
   if (seedDemoScores && !ss.getSheetByName(subjectSheetName_('점수', DEMO_SUBJECT)) && roster.getLastRow() > 1) {
     var score = ss.insertSheet(subjectSheetName_('점수', DEMO_SUBJECT));
     var demoDomains = getDomainsForSubject_(ss, DEMO_SUBJECT_ID);
-    var header = SCORE_FIXED_HEADER.concat(demoDomains.map(function (d) { return d.name; }));
+    var header = SCORE_FIXED_HEADER.concat(demoDomains.map(function (d) { return d.name; }), [TOTAL_HEADER]);
     score.getRange(1, 1, 1, header.length).setValues([header]);
 
     // 데모용 상태: 2=에코 수세미(이번 수행, 전원 미채점) / 3=적정기술(절반만 미실시) / 4,5=발명품(전원 예정)
@@ -121,9 +121,10 @@ function ensureSheets_() {
         if (di === 3 && i % 2 === 1) return '';
         return Math.round(d.max * (0.7 + Math.random() * 0.3)); // 만점의 70~100%
       });
-      return [DEMO_SUBJECT].concat(r, vals);
+      return [DEMO_SUBJECT].concat(r, vals, ['']);
     });
     score.getRange(2, 1, scoreRows.length, header.length).setValues(scoreRows);
+    refreshTotalColumn_(score);
   }
 
   var progress = ss.getSheetByName('진행상태');
@@ -255,6 +256,27 @@ function sortByClassOrder_(rows, gradeIdx, clsIdx, numIdx) {
 
 var SCORE_FIXED_HEADER = ['과목명', '학년', '반', '번호', '이름'];
 var ABSENT_HEADER = ['영역', '학년', '반', '번호', '이름'];
+var TOTAL_HEADER = '합계';
+
+// 점수 시트 맨 오른쪽의 "합계" 열. 없으면 만든다 (예전에 만든 시트도 다음 저장 때 생김).
+function ensureTotalColumn_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  var header = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+  if (header.indexOf(TOTAL_HEADER) === -1) sheet.getRange(1, lastCol + 1).setValue(TOTAL_HEADER);
+}
+
+// 합계 = 영역 열(F열~합계 바로 앞 열)의 SUM. "결시"·빈 칸은 글자/빈 칸이라 합에서 빠진다.
+// 행을 통째로 다시 쓰면 수식이 값으로 바뀌므로, 점수 시트를 쓴 뒤에는 항상 이 함수로 수식을 다시 채운다.
+function refreshTotalColumn_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return;
+  var header = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var ti = header.indexOf(TOTAL_HEADER);
+  var rows = sheet.getLastRow() - 1;
+  if (ti < 0 || rows < 1) return;
+  var formula = ti > SCORE_FIXED_HEADER.length ? '=SUM(RC' + (SCORE_FIXED_HEADER.length + 1) + ':RC' + ti + ')' : '=0';
+  sheet.getRange(2, ti + 1, rows, 1).setFormulaR1C1(formula);
+}
 
 // 시트 이름에 못 쓰는 글자(: \ / ? * [ ])는 _ 로 바꾸고, 100자를 넘지 않게 자른다.
 function subjectSheetName_(prefix, subject) {
@@ -297,11 +319,13 @@ function getScoreSheet_(ss, subject, createIfMissing) {
       if (used) keep.push(i);
     }
     keep.forEach(function (i) { header.push(legacyHeader[i]); });
-    rows = legacyRows.map(function (r) { return r.slice(0, 5).concat(keep.map(function (i) { return r[i]; })); });
+    rows = legacyRows.map(function (r) { return r.slice(0, 5).concat(keep.map(function (i) { return r[i]; }), ['']); });
   }
+  header.push(TOTAL_HEADER);
   sheet.getRange(1, 1, 1, header.length).setValues([header]);
   rows = sortByClassOrder_(rows, 1, 2, 3);
   if (rows.length) sheet.getRange(2, 1, rows.length, header.length).setValues(rows);
+  refreshTotalColumn_(sheet);
   return sheet;
 }
 
@@ -626,12 +650,17 @@ function saveDomains(password, subjectId, domains) {
     var owner = getSubjects_(ss).filter(function (s) { return s.id === subjectId; })[0];
     if (owner) {
       var scoreSheet = getScoreSheet_(ss, owner.name, true);
+      ensureTotalColumn_(scoreSheet);
       var scoreLastCol = scoreSheet.getLastColumn();
       var header = scoreLastCol > 0 ? scoreSheet.getRange(1, 1, 1, scoreLastCol).getValues()[0] : SCORE_FIXED_HEADER.slice();
       var missing = clean.map(function (d) { return d.name; }).filter(function (name) { return header.indexOf(name) === -1; });
       if (missing.length) {
-        scoreSheet.getRange(1, header.length + 1, 1, missing.length).setValues([missing]);
+        // 새 영역 열은 "합계" 열 앞에 끼워 넣어서 합계가 항상 맨 오른쪽에 있게 한다.
+        var totalIdx = header.indexOf(TOTAL_HEADER);
+        scoreSheet.insertColumnsBefore(totalIdx + 1, missing.length);
+        scoreSheet.getRange(1, totalIdx + 1, 1, missing.length).setValues([missing]);
       }
+      refreshTotalColumn_(scoreSheet);
     }
     return { ok: true };
   } finally {
@@ -670,6 +699,67 @@ function getClassScores(password, subject, grade, cls) {
   return { domains: domains, students: students };
 }
 
+// 데이터 비교용: 그 과목을 듣는 모든 학급의 영역별 평균과 합계 평균.
+// 점수가 입력된 학생만 평균에 넣는다 (빈 칸·결시 제외). 합계는 점수가 하나라도 있는 학생의 영역 점수 합.
+function getSubjectAverages(password, subject) {
+  var ss = ensureSheets_();
+  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
+  var subjects = getSubjects_(ss);
+  var seen = {}, pairs = [];
+  subjects.filter(function (s) { return s.name === subject; }).forEach(function (s) {
+    s.classPairs.forEach(function (p) {
+      var key = p.grade + '-' + p.cls;
+      if (!seen[key]) { seen[key] = true; pairs.push(p); }
+    });
+  });
+  pairs.sort(function (a, b) { return (Number(a.grade) - Number(b.grade)) || (Number(a.cls) - Number(b.cls)); });
+
+  var roster = ss.getSheetByName('명단');
+  var rosterData = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
+  var book = readScores_(ss, subject);
+
+  var classes = pairs.map(function (p) {
+    var instance = resolveSubjectInstance_(subjects, subject, p.grade, p.cls);
+    var domains = instance ? getDomainsForSubject_(ss, instance.id) : [];
+    var numbers = {};
+    rosterData.forEach(function (r) {
+      if (String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls)) numbers[String(r[2])] = true;
+    });
+    var rows = book.data.filter(function (r) {
+      return String(r[0]) === subject && String(r[1]) === String(p.grade) && String(r[2]) === String(p.cls) && numbers[String(r[3])];
+    });
+    var totals = [];
+    var stats = domains.map(function (d) {
+      var idx = book.header.indexOf(d.name);
+      return { name: d.name, max: d.max, sum: 0, n: 0, idx: idx };
+    });
+    rows.forEach(function (r) {
+      var rowSum = 0, any = false;
+      stats.forEach(function (st) {
+        if (st.idx < 0) return;
+        var raw = r[st.idx];
+        if (raw === '' || raw === null || raw === undefined || isAbsentValue_(raw)) return;
+        var v = Number(raw);
+        if (isNaN(v)) return;
+        st.sum += v; st.n++; rowSum += v; any = true;
+      });
+      if (any) totals.push(rowSum);
+    });
+    var maxSum = domains.reduce(function (s, d) { return s + d.max; }, 0);
+    return {
+      grade: String(p.grade), cls: String(p.cls),
+      domains: stats.map(function (st) {
+        return { name: st.name, max: st.max, n: st.n, avg: st.n ? st.sum / st.n : null };
+      }),
+      total: {
+        max: maxSum, n: totals.length,
+        avg: totals.length ? totals.reduce(function (s, v) { return s + v; }, 0) / totals.length : null
+      }
+    };
+  });
+  return { classes: classes };
+}
+
 function saveClassScores(password, subject, grade, cls, students) {
   var ss = ensureSheets_();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
@@ -677,6 +767,7 @@ function saveClassScores(password, subject, grade, cls, students) {
   lock.waitLock(10000);
   try {
     var scoreSheet = getScoreSheet_(ss, subject, true);
+    ensureTotalColumn_(scoreSheet);
     var lastRow = scoreSheet.getLastRow();
     var lastCol = scoreSheet.getLastColumn();
     var header = scoreSheet.getRange(1, 1, 1, lastCol).getValues()[0];
@@ -707,6 +798,7 @@ function saveClassScores(password, subject, grade, cls, students) {
 
     data = sortByClassOrder_(data, 1, 2, 3);
     scoreSheet.getRange(2, 1, data.length, header.length).setValues(data);
+    refreshTotalColumn_(scoreSheet);
     return { ok: true, savedAt: new Date().toISOString() };
   } finally {
     lock.releaseLock();
@@ -803,6 +895,7 @@ function saveAttendanceForClass(password, subject, grade, cls, students, memos, 
     if (instance) saveClassProgress_(ss, instance.id, grade, cls, statuses, memos);
 
     var scoreSheet = getScoreSheet_(ss, subject, true);
+    ensureTotalColumn_(scoreSheet);
     var lastRow = scoreSheet.getLastRow();
     var lastCol = scoreSheet.getLastColumn();
     var header = scoreSheet.getRange(1, 1, 1, lastCol).getValues()[0];
@@ -835,6 +928,7 @@ function saveAttendanceForClass(password, subject, grade, cls, students, memos, 
 
     data = sortByClassOrder_(data, 1, 2, 3);
     scoreSheet.getRange(2, 1, data.length, header.length).setValues(data);
+    refreshTotalColumn_(scoreSheet);
 
     var domainNames = instance ? getDomainsForSubject_(ss, instance.id).map(function (d) { return d.name; }) : [];
     updateAbsentRoster_(ss, subject, grade, cls, domainNames, students);

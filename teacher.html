@@ -275,6 +275,22 @@
   .notice-domain-field select{ text-overflow:clip; }
   .notice-memo-field{ max-width:100%; }
   .notice-memo-field textarea{ resize:none; overflow:hidden; line-height:1.3; white-space:pre-wrap; overflow-wrap:anywhere; display:block; }
+  /* 데이터 비교: 반별 평균 막대 그래프 (한 가지 지표라 한 색, 값은 글자로 함께 표시) */
+  .picker-row .field.compare-domain-field{ width:auto; flex:1 1 280px; min-width:0; }
+  .compare-title{ font-size:14px; font-weight:700; margin:0 0 4px; }
+  .compare-sub{ font-size:12px; color:var(--ink-soft); margin:0 0 16px; }
+  .compare-list{ display:flex; flex-direction:column; gap:8px; }
+  .compare-row{ display:grid; grid-template-columns:96px 1fr 88px; align-items:center; gap:12px; font-size:13px; }
+  .compare-row .cmp-label{ font-weight:600; color:var(--ink); }
+  .compare-row .cmp-track{ height:20px; background:var(--bg); border-radius:4px; overflow:hidden; }
+  .compare-row .cmp-bar{ height:100%; background:var(--purple); border-radius:0 4px 4px 0; min-width:2px; }
+  .compare-row .cmp-value{ text-align:right; font-weight:700; font-variant-numeric:tabular-nums; }
+  .compare-row .cmp-value small{ display:block; font-size:12px; font-weight:500; color:var(--ink-soft); }
+  .compare-row.all{ margin-top:8px; padding-top:12px; border-top:1px solid var(--border); }
+  .compare-row.all .cmp-bar{ background:var(--ink-soft); }
+  .compare-row.none .cmp-bar{ display:none; }
+  .compare-row.none .cmp-value{ color:var(--ink-soft); font-weight:500; }
+  @media (max-width:640px){ .compare-row{ grid-template-columns:72px 1fr 72px; gap:8px; } }
   .notice-list{ border:1px solid var(--border); border-radius:12px; max-height:320px; overflow-y:auto; }
   .notice-item{ display:flex; gap:12px; align-items:baseline; padding:8px 16px; border-bottom:1px solid var(--border); font-size:12.5px; color:var(--ink); }
   .notice-item:last-child{ border-bottom:none; }
@@ -349,9 +365,13 @@
 
   .actions-row{ display:flex; justify-content:center; gap:12px; margin-top:16px; align-items:center; position:relative; }
   .save-hint{ font-size:12px; color: var(--ink-soft); position:absolute; left:0; }
+  /* 점수 입력표: 엑셀 다운로드는 왼쪽, 전체 저장은 가운데, 저장 안내는 오른쪽 */
+  .scores-actions #downloadScoresXlsxBtn{ position:absolute; left:0; }
+  .scores-actions .save-hint{ left:auto; right:0; }
   @media (max-width:640px){
     .actions-row{ flex-direction:column; gap:8px; }
     .save-hint{ position:static; }
+    .scores-actions #downloadScoresXlsxBtn{ position:static; }
   }
   .btn-primary{
     padding:12px 20px; font-size:13.5px; font-weight:700; font-family:inherit;
@@ -365,6 +385,7 @@
     color: var(--ink); background: #f1f1f6; border:none; border-radius: 10px; cursor:pointer;
   }
   .btn-secondary:hover{ background:#e7e7ee; }
+  .btn-secondary:disabled{ opacity:.6; cursor:not-allowed; }
 
   .spinner{
     width:14px; height:14px; border-radius:50%;
@@ -398,6 +419,11 @@
   td.name-cell{ font-size:13px; font-weight:600; overflow-wrap:break-word; word-break:keep-all; text-wrap:balance; }
   .attend-stats-row > span, .notice-item .ni-domain{ word-break:keep-all; text-wrap:balance; }
   td.num-cell{ font-size:12.5px; color:var(--ink-soft); }
+  tfoot{ position:sticky; bottom:0; z-index:2; }
+  tfoot td{ background:#fafafc; padding:8px 4px; border-top:1px solid var(--border); border-left:1px solid var(--border); text-align:center; vertical-align:middle; font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; }
+  tfoot td:first-child{ border-left:none; color:var(--ink-soft); }
+  tfoot td.total-cell{ color:var(--purple-dark); }
+  td.total-cell{ font-size:13px; font-weight:700; color:var(--purple-dark); font-variant-numeric:tabular-nums; }
   td.score-cell input{ width:100%; min-width:0; padding:8px 2px; text-align:center; }
   .empty-state{
     text-align:center; padding:40px 20px; color:var(--ink-soft); font-size:13.5px;
@@ -518,6 +544,7 @@
     <button type="button" data-section="domains">수행 영역 관리</button>
     <button type="button" data-section="attendance">응시·결시 관리</button>
     <button type="button" data-section="scores">반별 점수 입력 표</button>
+    <button type="button" data-section="compare">데이터 비교</button>
     <button type="button" data-section="notice">결시자 수행안내</button>
   </div>
   <button type="button" class="topbar-logout" id="logoutBtn">로그아웃</button>
@@ -738,10 +765,12 @@
         <tbody id="scoreTableBody">
           <tr><td colspan="99"><div class="empty-state">과목·학년·반을 선택하고 불러오기를 눌러주세요</div></td></tr>
         </tbody>
+        <tfoot id="scoreTableFoot"></tfoot>
       </table>
     </div>
-    <div class="actions-row">
+    <div class="actions-row scores-actions">
       <span class="save-hint" id="lastSavedHint"></span>
+      <button class="btn-secondary" id="downloadScoresXlsxBtn" disabled>엑셀 파일로 다운로드</button>
       <button class="btn-primary" id="saveScoresBtn" disabled>
         <span class="btn-label">전체 저장</span>
         <span class="spinner" hidden></span>
@@ -750,11 +779,40 @@
     </div>
   </section>
 
-  <!-- 6. 결시자 수행안내 -->
+  <!-- 6. 데이터 비교 -->
+  <section class="card" id="section-compare">
+    <button type="button" class="card-head-btn" data-section="compare">
+      <span class="card-head-left">
+        <h2><span class="step-no">6</span>데이터 비교</h2>
+        <span class="card-desc">과목과 영역을 고르면 그 과목을 듣는 반들의 평균을 숫자와 그래프로 비교해요.</span>
+      </span>
+      <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="card-body" hidden>
+      <div class="picker-row compare-picker">
+        <div class="field">
+          <label for="compareSubjectSelect">과목</label>
+          <select id="compareSubjectSelect"></select>
+        </div>
+        <div class="field compare-domain-field">
+          <label for="compareDomainSelect">영역</label>
+          <select id="compareDomainSelect"></select>
+        </div>
+        <button class="btn-secondary" id="loadCompareBtn">불러오기</button>
+      </div>
+      <div id="compareResult">
+        <div class="empty-state">과목을 고르고 불러오기를 눌러주세요</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. 결시자 수행안내 -->
   <section class="card" id="section-notice">
     <button type="button" class="card-head-btn" data-section="notice">
       <span class="card-head-left">
-        <h2><span class="step-no">6</span>결시자 수행안내</h2>
+        <h2><span class="step-no">7</span>결시자 수행안내</h2>
         <span class="card-desc">결시로 체크된 학생의 수행 안내장을 A4 한 장에 3행×3열(9칸)로 만들어요.</span>
       </span>
       <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -835,6 +893,7 @@
 <div class="toast" id="toast"></div>
 <div id="noticePrintArea" aria-hidden="true"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 /* ---- google.script.run 이 없는 로컬/미리보기 환경을 위한 목업 (실제 배포 시엔 사용되지 않음) ---- */
 function createMockRun(){
@@ -955,6 +1014,38 @@ function createMockRun(){
       var s = resolveSubjectInstance(subject, g, c);
       var key = g+'-'+c;
       return { domains: s ? s.domains.slice() : [], students: studentsFor(subject, key) };
+    }); },
+    getSubjectAverages: function(pw,subject){ run(function(){
+      check(pw);
+      var seen = {}, pairs = [];
+      state.subjects.filter(function(s){ return s.name === subject; }).forEach(function(s){
+        (s.classPairs||[]).forEach(function(p){
+          if (!seen[p.grade+'-'+p.cls]){ seen[p.grade+'-'+p.cls] = true; pairs.push(p); }
+        });
+      });
+      pairs.sort(function(a,b){ return (Number(a.grade)-Number(b.grade)) || (Number(a.cls)-Number(b.cls)); });
+      return { classes: pairs.map(function(p){
+        var s = resolveSubjectInstance(subject, p.grade, p.cls);
+        var domains = s ? s.domains : [];
+        var students = studentsFor(subject, p.grade+'-'+p.cls);
+        var totals = [];
+        var stats = domains.map(function(d){ return { name:d.name, max:d.max, sum:0, n:0 }; });
+        students.forEach(function(stu){
+          var rowSum = 0, any = false;
+          stats.forEach(function(st){
+            var raw = stu.scores[st.name];
+            if (raw === undefined || raw === '' || isAbsentValue(raw)) return;
+            st.sum += Number(raw); st.n++; rowSum += Number(raw); any = true;
+          });
+          if (any) totals.push(rowSum);
+        });
+        return {
+          grade:String(p.grade), cls:String(p.cls),
+          domains: stats.map(function(st){ return { name:st.name, max:st.max, n:st.n, avg: st.n ? st.sum/st.n : null }; }),
+          total: { max: domains.reduce(function(a,d){ return a + d.max; }, 0), n: totals.length,
+                   avg: totals.length ? totals.reduce(function(a,v){ return a+v; }, 0)/totals.length : null }
+        };
+      }) };
     }); },
     saveClassScores: function(pw,subject,g,c,students){ run(function(){
       check(pw);
@@ -1144,13 +1235,15 @@ var selectedDomainSubject = '';
 var selectedScoreSubject = '';
 var selectedAttendanceSubject = '';
 var selectedNoticeSubject = '';
+var selectedCompareSubject = '';
+var compareData = null; // { classes:[{grade,cls,domains:[{name,max,n,avg}],total:{max,n,avg}}] }
 var noticeData = null; // { rows:[{domain,grade,cls,number,name}], domains:[...] }
 var currentClassCtx = null;
 var currentRosterCtx = null;
 var currentAttendanceCtx = null;
 
 /* ---- 아코디언(학생 명단 관리 / 수업 과목 설정 / 수행 영역 관리 / 응시·결시 관리 / 반별 점수 입력 표) ---- */
-var SECTION_KEYS = ['roster', 'config', 'domains', 'attendance', 'scores', 'notice'];
+var SECTION_KEYS = ['roster', 'config', 'domains', 'attendance', 'scores', 'compare', 'notice'];
 var sectionEls = {};
 
 function setupAccordion(){
@@ -1401,6 +1494,8 @@ function applyConfigToForm(cfg){
   populateSubjectSelect('scoreSubjectSelect', names, selectedScoreSubject);
   populateSubjectSelect('attendanceSubjectSelect', names, selectedAttendanceSubject);
   populateSubjectSelect('noticeSubjectSelect', names, selectedNoticeSubject);
+  populateSubjectSelect('compareSubjectSelect', names, selectedCompareSubject);
+  onCompareSubjectChange();
   onNoticeSubjectChange();
   onDomainSubjectChange();
   onScoreSubjectChange();
@@ -1578,6 +1673,7 @@ function populateSubjectSelect(selectId, names, preferred){
   if (selectId === 'scoreSubjectSelect') selectedScoreSubject = value;
   if (selectId === 'attendanceSubjectSelect') selectedAttendanceSubject = value;
   if (selectId === 'noticeSubjectSelect') selectedNoticeSubject = value;
+  if (selectId === 'compareSubjectSelect') selectedCompareSubject = value;
 }
 
 document.getElementById('saveConfigBtn').addEventListener('click', function(){
@@ -1942,7 +2038,7 @@ document.addEventListener('change', function(e){
 
 // 응시·결시 관리에서 저장한 그 반의 상태를 화면이 들고 있는 설정(currentConfig)에도 반영해서 수행 영역 관리와 맞춘다.
 // 응시·결시 관리와 반별 점수 입력 표가 함께 쓰는 머리글: 번호·이름, 그리고 상위 그룹이 없는(=하위 영역이 없는) 영역은 윗 행과 합쳐서(rowspan) 한 칸으로 보여준다.
-function buildAttendanceHeader(domains){
+function buildAttendanceHeader(domains, withTotal){
   var hasGroup = domains.some(function(d){ return d.group; });
   var rs = hasGroup ? ' rowspan="2"' : '';
   var row1 = '<th' + rs + '>번호</th><th' + rs + '>이름</th>';
@@ -1962,6 +2058,10 @@ function buildAttendanceHeader(domains){
       }
       i = j;
     }
+  }
+  if (withTotal){
+    var maxSum = domains.reduce(function(s, d){ return s + (Number(d.max) || 0); }, 0);
+    row1 += '<th' + rs + '>합계<span class="th-max">(' + maxSum + '점)</span></th>';
   }
   return '<tr>' + row1 + '</tr>' + (hasGroup ? '<tr>' + row2 + '</tr>' : '');
 }
@@ -2142,8 +2242,8 @@ function onScoreSubjectChange(){
   document.getElementById('pickClass').innerHTML = '<option value="">선택</option>';
   document.getElementById('scoreTableBody').innerHTML =
     '<tr><td colspan="99"><div class="empty-state">과목·학년·반을 선택하고 불러오기를 눌러주세요</div></td></tr>';
-  document.getElementById('scoreTableHead').innerHTML = '';
-  document.getElementById('saveScoresBtn').disabled = true;
+  document.getElementById('scoreTableHead').innerHTML = document.getElementById('scoreTableFoot').innerHTML = '';
+  document.getElementById('saveScoresBtn').disabled = document.getElementById('downloadScoresXlsxBtn').disabled = true;
   currentClassCtx = null;
   if (!selectedScoreSubject || !currentConfig) return;
 
@@ -2181,14 +2281,15 @@ document.getElementById('loadClassBtn').addEventListener('click', function(){
   if (!g || !c){ showToast('학년과 반을 선택해주세요.', true); return; }
   var body = document.getElementById('scoreTableBody');
   body.innerHTML = '<tr><td colspan="99"><div class="empty-state">불러오는 중...</div></td></tr>';
-  document.getElementById('saveScoresBtn').disabled = true;
+  document.getElementById('scoreTableFoot').innerHTML = '';
+  document.getElementById('saveScoresBtn').disabled = document.getElementById('downloadScoresXlsxBtn').disabled = true;
 
   gs.withSuccessHandler(function(res){
     if (!res.domains || res.domains.length === 0){
       currentClassCtx = null;
-      document.getElementById('scoreTableHead').innerHTML = '';
+      document.getElementById('scoreTableHead').innerHTML = document.getElementById('scoreTableFoot').innerHTML = '';
       body.innerHTML = '<tr><td colspan="99"><div class="empty-state">영역을 먼저 입력해주세요. "수행 영역 관리"에서 이 과목의 영역을 추가하고 저장해주세요.</div></td></tr>';
-      document.getElementById('saveScoresBtn').disabled = true;
+      document.getElementById('saveScoresBtn').disabled = document.getElementById('downloadScoresXlsxBtn').disabled = true;
       showToast('영역을 먼저 입력해주세요.', true);
       return;
     }
@@ -2198,9 +2299,47 @@ document.getElementById('loadClassBtn').addEventListener('click', function(){
   }).getClassScores(TEACHER_PW, subject, g, c);
 });
 
-function buildColgroup(domainCount){
+function buildColgroup(domainCount, withTotal){
   return '<colgroup><col style="width:52px"><col style="width:64px">' +
-    new Array(domainCount).fill('<col>').join('') + '</colgroup>';
+    new Array(domainCount).fill('<col>').join('') + (withTotal ? '<col style="width:64px">' : '') + '</colgroup>';
+}
+
+// 한 학생 행의 합계 = 그 행의 점수 입력칸 값의 합 (결시·빈 칸은 빠진다). 소수점 오차는 둘째 자리에서 정리한다.
+function rowTotal(tr){
+  var sum = 0;
+  tr.querySelectorAll('input[data-domain]').forEach(function(input){
+    if (input.value !== '') sum += Number(input.value) || 0;
+  });
+  return Math.round(sum * 100) / 100;
+}
+function updateRowTotal(tr){
+  var cell = tr.querySelector('.total-cell');
+  if (cell) cell.textContent = rowTotal(tr);
+}
+
+// 표 맨 아래 "평균" 줄: 영역(하위 영역이 없으면 영역명)마다, 그리고 합계의 평균.
+// 점수가 입력된 학생만 평균에 넣는다 (빈 칸·결시는 제외). 소수 첫째 자리까지 보여준다.
+function averageOf(list){
+  if (list.length === 0) return '-';
+  return Math.round(list.reduce(function(s, v){ return s + v; }, 0) / list.length * 10) / 10;
+}
+function updateAverages(){
+  var foot = document.getElementById('scoreTableFoot');
+  var rows = Array.from(document.querySelectorAll('#scoreTableBody tr[data-number]'));
+  if (!currentClassCtx || rows.length === 0){ foot.innerHTML = ''; return; }
+  var cells = currentClassCtx.domains.map(function(d){
+    var vals = [];
+    rows.forEach(function(tr){
+      Array.from(tr.querySelectorAll('input[data-domain]')).forEach(function(input){
+        if (input.dataset.domain === d.name && input.value !== '') vals.push(Number(input.value) || 0);
+      });
+    });
+    return '<td>' + averageOf(vals) + '</td>';
+  }).join('');
+  var totals = rows.filter(function(tr){
+    return Array.from(tr.querySelectorAll('input[data-domain]')).some(function(i){ return i.value !== ''; });
+  }).map(rowTotal);
+  foot.innerHTML = '<tr><td colspan="2">평균</td>' + cells + '<td class="total-cell">' + averageOf(totals) + '</td></tr>';
 }
 
 function renderScoreTable(res, subject, g, c){
@@ -2209,16 +2348,17 @@ function renderScoreTable(res, subject, g, c){
   var table = document.getElementById('scoreTable');
   var existingColgroup = table.querySelector('colgroup');
   if (existingColgroup) existingColgroup.remove();
-  table.insertAdjacentHTML('afterbegin', buildColgroup(res.domains.length));
+  table.insertAdjacentHTML('afterbegin', buildColgroup(res.domains.length, true));
 
   var head = document.getElementById('scoreTableHead');
   var body = document.getElementById('scoreTableBody');
 
-  head.innerHTML = buildAttendanceHeader(res.domains);
+  head.innerHTML = buildAttendanceHeader(res.domains, true);
+  document.getElementById('scoreTableFoot').innerHTML = '';
 
   if (res.students.length === 0){
-    body.innerHTML = '<tr><td colspan="' + (res.domains.length+2) + '"><div class="empty-state">이 학년·반에 등록된 학생이 없어요. "학생 명단 관리"에서 학생을 추가해주세요.</div></td></tr>';
-    document.getElementById('saveScoresBtn').disabled = true;
+    body.innerHTML = '<tr><td colspan="' + (res.domains.length+3) + '"><div class="empty-state">이 학년·반에 등록된 학생이 없어요. "학생 명단 관리"에서 학생을 추가해주세요.</div></td></tr>';
+    document.getElementById('saveScoresBtn').disabled = document.getElementById('downloadScoresXlsxBtn').disabled = true;
     return;
   }
 
@@ -2235,18 +2375,60 @@ function renderScoreTable(res, subject, g, c){
           escapeHtml(d.name) + '" value="' + (v === '' ? '' : Number(v)) + '" placeholder="-" /></td>';
       }
     });
+    cells += '<td class="total-cell"></td>';
     tr.innerHTML = cells;
     tr.dataset.number = stu.number;
     tr.dataset.name = stu.name;
+    updateRowTotal(tr);
     body.appendChild(tr);
   });
-  document.getElementById('saveScoresBtn').disabled = false;
+  updateAverages();
+  document.getElementById('saveScoresBtn').disabled = document.getElementById('downloadScoresXlsxBtn').disabled = false;
   document.getElementById('lastSavedHint').textContent = '';
 }
 
 document.getElementById('scoreTableBody').addEventListener('input', function(e){
   if (e.target.matches('.score-cell input')) markDirty('scores');
 });
+
+document.getElementById('downloadScoresXlsxBtn').addEventListener('click', function(){
+  if (!currentClassCtx) return;
+  if (typeof XLSX === 'undefined'){ showToast('엑셀 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인해주세요.', true); return; }
+  var domains = currentClassCtx.domains;
+  var header = ['번호', '이름'].concat(domains.map(function(d){
+    return (d.group ? d.group + ' ' : '') + d.name + '(' + d.max + '점)';
+  }));
+  header.push('합계(' + domains.reduce(function(s, d){ return s + (Number(d.max) || 0); }, 0) + '점)');
+  var aoa = [header];
+  var totalCol = header.length - 1;
+  document.querySelectorAll('#scoreTableBody tr').forEach(function(tr){
+    if (!tr.dataset.number) return;
+    var row = [Number(tr.dataset.number), tr.dataset.name];
+    domains.forEach(function(d){
+      var input = Array.from(tr.querySelectorAll('input[data-domain]')).filter(function(i){ return i.dataset.domain === d.name; })[0];
+      if (!input) row.push(ABSENT_MARKER);
+      else row.push(input.value === '' ? '' : Number(input.value));
+    });
+    // 합계는 엑셀에서 점수를 고치면 같이 바뀌도록 SUM 수식으로 넣는다 (값도 함께 넣어 미리보기에서도 보이게)
+    var rng = XLSX.utils.encode_cell({ r: aoa.length, c: 2 }) + ':' + XLSX.utils.encode_cell({ r: aoa.length, c: totalCol - 1 });
+    row.push({ t: 'n', v: rowTotal(tr), f: 'SUM(' + rng + ')' });
+    aoa.push(row);
+  });
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = header.map(function(h, i){ return { wch: i === 0 ? 6 : i === 1 ? 10 : Math.max(10, h.length + 2) }; });
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, (currentClassCtx.grade + '학년 ' + currentClassCtx.class + '반').replace(/[\\\/\?\*\[\]:]/g, ''));
+  var fileName = (currentClassCtx.subject + '_' + currentClassCtx.grade + '학년' + currentClassCtx.class + '반_점수.xlsx').replace(/[\\\/:*?"<>|]/g, '');
+  XLSX.writeFile(wb, fileName);
+  showToast('엑셀 파일로 내려받았어요.');
+});
+
+document.getElementById('scoreTableBody').addEventListener('input', function(e){
+  if (!e.target.matches('.score-cell input')) return;
+  updateRowTotal(e.target.closest('tr'));
+  updateAverages();
+});
+
 document.getElementById('scoreTableBody').addEventListener('keydown', function(e){
   if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   var input = e.target;
@@ -2297,7 +2479,81 @@ document.getElementById('saveScoresBtn').addEventListener('click', function(){
   }).saveClassScores(TEACHER_PW, currentClassCtx.subject, currentClassCtx.grade, currentClassCtx.class, students);
 });
 
-/* ---- 6. 결시자 수행안내 ---- */
+/* ---- 6. 데이터 비교 ---- */
+var COMPARE_TOTAL_KEY = '__total__';
+document.getElementById('compareSubjectSelect').addEventListener('change', function(){
+  selectedCompareSubject = this.value;
+  onCompareSubjectChange();
+});
+document.getElementById('compareDomainSelect').addEventListener('change', renderCompare);
+
+function onCompareSubjectChange(){
+  compareData = null;
+  var names = [];
+  if (currentConfig){
+    currentConfig.subjects.filter(function(s){ return s.name === selectedCompareSubject; }).forEach(function(s){
+      s.domains.forEach(function(d){ if (names.indexOf(d.name) === -1) names.push(d.name); });
+    });
+  }
+  document.getElementById('compareDomainSelect').innerHTML =
+    names.map(function(n){ return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>'; }).join('') +
+    (names.length ? '<option value="' + COMPARE_TOTAL_KEY + '">합계</option>' : '');
+  document.getElementById('compareResult').innerHTML = '<div class="empty-state">과목을 고르고 불러오기를 눌러주세요</div>';
+}
+
+document.getElementById('loadCompareBtn').addEventListener('click', function(){
+  if (!selectedCompareSubject){ showToast('먼저 수업 과목을 추가해주세요.', true); return; }
+  var box = document.getElementById('compareResult');
+  box.innerHTML = '<div class="empty-state">불러오는 중...</div>';
+  gs.withSuccessHandler(function(res){
+    compareData = res;
+    renderCompare();
+  }).withFailureHandler(function(){
+    box.innerHTML = '<div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div>';
+  }).getSubjectAverages(TEACHER_PW, selectedCompareSubject);
+});
+
+function fmtAvg(v){ return String(Math.round(v * 10) / 10); }
+
+function renderCompare(){
+  var box = document.getElementById('compareResult');
+  if (!compareData) return;
+  var key = document.getElementById('compareDomainSelect').value;
+  if (!key){ box.innerHTML = '<div class="empty-state">이 과목에 영역이 없어요. "수행 영역 관리"에서 영역을 추가해주세요.</div>'; return; }
+
+  // 그 영역이 있는 반만 비교한다 (학년마다 영역이 다를 수 있음). 합계는 모든 반이 대상.
+  var entries = [];
+  compareData.classes.forEach(function(c){
+    var st = key === COMPARE_TOTAL_KEY ? c.total : c.domains.filter(function(d){ return d.name === key; })[0];
+    if (st) entries.push({ label: c.grade + '학년 ' + c.cls + '반', avg: st.avg, n: st.n, max: st.max });
+  });
+  if (entries.length === 0){ box.innerHTML = '<div class="empty-state">이 영역을 가진 반이 없어요.</div>'; return; }
+
+  var max = entries.reduce(function(m, e){ return Math.max(m, e.max); }, 0) || 1;
+  var scored = entries.filter(function(e){ return e.n > 0; });
+  var totalN = scored.reduce(function(s, e){ return s + e.n; }, 0);
+  var overall = totalN ? scored.reduce(function(s, e){ return s + e.avg * e.n; }, 0) / totalN : null;
+
+  function row(label, avg, n, cls){
+    if (avg === null) {
+      return '<div class="compare-row none ' + cls + '"><span class="cmp-label">' + escapeHtml(label) + '</span><span class="cmp-track"></span><span class="cmp-value">점수 없음</span></div>';
+    }
+    var tip = label + ': 평균 ' + fmtAvg(avg) + '점 / ' + max + '점 (' + n + '명 기준)';
+    return '<div class="compare-row ' + cls + '" title="' + escapeHtml(tip) + '"><span class="cmp-label">' + escapeHtml(label) + '</span>' +
+      '<span class="cmp-track"><span class="cmp-bar" style="display:block;width:' + Math.min(100, avg / max * 100) + '%"></span></span>' +
+      '<span class="cmp-value">' + fmtAvg(avg) + '점<small>' + n + '명</small></span></div>';
+  }
+
+  box.innerHTML =
+    '<p class="compare-title">' + escapeHtml(key === COMPARE_TOTAL_KEY ? '합계' : key) + ' · 반별 평균</p>' +
+    '<p class="compare-sub">만점 ' + max + '점 기준 막대예요. 점수가 입력된 학생만 평균에 넣어요(빈 칸·결시 제외).</p>' +
+    '<div class="compare-list">' +
+    entries.map(function(e){ return row(e.label, e.avg, e.n, ''); }).join('') +
+    (entries.length > 1 ? row('전체', overall, totalN, 'all') : '') +
+    '</div>';
+}
+
+/* ---- 7. 결시자 수행안내 ---- */
 document.getElementById('noticeSubjectSelect').addEventListener('change', function(){
   selectedNoticeSubject = this.value;
   onNoticeSubjectChange();
