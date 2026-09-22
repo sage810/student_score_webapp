@@ -776,6 +776,9 @@ function saveClassScores(password, subject, grade, cls, students) {
     var rowIndexMap = {};
     data.forEach(function (r, i) { rowIndexMap[r[0] + '-' + r[1] + '-' + r[2] + '-' + r[3]] = i; });
 
+    // 결시로 표시돼 있던 칸에 반별 점수 입력 표에서 직접 점수를 넣으면, 그 학생·영역의 결시를 풀어준 것으로 본다.
+    var resolvedAbsences = []; // [{domain, number}]
+
     students.forEach(function (stu) {
       var key = subject + '-' + grade + '-' + cls + '-' + stu.number;
       var idx = rowIndexMap[key];
@@ -791,7 +794,10 @@ function saveClassScores(password, subject, grade, cls, students) {
         var colIdx = header.indexOf(d);
         if (colIdx >= 0) {
           var v = stu.scores[d];
-          row[colIdx] = (v === '' || v === null || v === undefined) ? '' : Number(v);
+          var wasAbsent = isAbsentValue_(row[colIdx]);
+          var isEmpty = (v === '' || v === null || v === undefined);
+          row[colIdx] = isEmpty ? '' : Number(v);
+          if (wasAbsent && !isEmpty) resolvedAbsences.push({ domain: d, number: stu.number });
         }
       });
     });
@@ -799,6 +805,7 @@ function saveClassScores(password, subject, grade, cls, students) {
     data = sortByClassOrder_(data, 1, 2, 3);
     scoreSheet.getRange(2, 1, data.length, header.length).setValues(data);
     refreshTotalColumn_(scoreSheet);
+    if (resolvedAbsences.length) removeResolvedAbsences_(ss, subject, grade, cls, resolvedAbsences);
     return { ok: true, savedAt: new Date().toISOString() };
   } finally {
     lock.releaseLock();
@@ -966,6 +973,26 @@ function updateAbsentRoster_(ss, subject, grade, cls, domainNames, students) {
   }
 }
 
+// 반별 점수 입력 표에서 결시 칸에 직접 점수를 넣었을 때, 결시명단_과목명 시트에서도 그 학생·영역 행을 지워 맞춰준다.
+function removeResolvedAbsences_(ss, subject, grade, cls, resolvedAbsences) {
+  var sheet = getAbsentSheet_(ss, subject);
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+  var data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+  var toRemove = {};
+  resolvedAbsences.forEach(function (r) { toRemove[r.domain + '|' + r.number] = true; });
+  var kept = data.filter(function (r) {
+    if (String(r[1]) !== String(grade) || String(r[2]) !== String(cls)) return true;
+    return !toRemove[String(r[0]) + '|' + String(r[3])];
+  });
+  if (kept.length === data.length) return; // 바뀐 게 없으면 다시 쓰지 않는다
+  sheet.clear();
+  sheet.getRange(1, 1, 1, 5).setValues([ABSENT_HEADER]);
+  if (kept.length) {
+    sheet.getRange(2, 1, kept.length, 5).setValues(kept);
+  }
+}
+
 // 결시자 수행안내 PDF용: 점수 시트에서 "결시"로 표시된 학생 전체를 (영역·학년·반·번호 순으로) 모아서 돌려준다.
 function getAbsentees(password, subject) {
   var ss = ensureSheets_();
@@ -996,6 +1023,69 @@ function getAbsentees(password, subject) {
   var domainNames = [];
   rows.forEach(function (r) { if (domainNames.indexOf(r.domain) === -1) domainNames.push(r.domain); });
   return { rows: rows, domains: domainNames };
+}
+
+// 홈 화면 상단 통계용: 맡은 과목 수 / 결시 대기(결시로 표시된 항목 수) / 이번 수행 완료율.
+// "이번 수행 완료율"은 상태가 "이번 수행"인 영역-학생 조합 중 점수가 입력된 비율이다(빈 칸·결시 제외).
+// 여러 반·영역을 한 번에 훑어야 해서 화면에서 여러 번 나눠 부르는 대신 여기서 한 번에 계산해 돌려준다.
+function getHomeStats(password) {
+  var ss = ensureSheets_();
+  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
+  var subjects = getSubjects_(ss);
+  var names = [];
+  subjects.forEach(function (s) { if (names.indexOf(s.name) === -1) names.push(s.name); });
+
+  var roster = ss.getSheetByName('명단');
+  var rosterData = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
+  var allStatuses = readAllStatuses_(ss);
+
+  var absentPending = 0, performTotal = 0, performDone = 0;
+
+  names.forEach(function (name) {
+    var book = readScores_(ss, name);
+    var rowIndex = {};
+    book.data.forEach(function (r, i) { rowIndex[r[1] + '-' + r[2] + '-' + r[3]] = i; });
+
+    var seen = {}, pairs = [];
+    subjects.filter(function (s) { return s.name === name; }).forEach(function (s) {
+      s.classPairs.forEach(function (p) {
+        var key = p.grade + '-' + p.cls;
+        if (!seen[key]) { seen[key] = true; pairs.push(p); }
+      });
+    });
+
+    pairs.forEach(function (p) {
+      var instance = resolveSubjectInstance_(subjects, name, p.grade, p.cls);
+      if (!instance) return;
+      var domains = getDomainsForSubject_(ss, instance.id);
+      var statuses = classStatusesFor_(allStatuses, instance, p.grade, p.cls, domains);
+      var classNumbers = rosterData
+        .filter(function (r) { return String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls); })
+        .map(function (r) { return String(r[2]); });
+
+      domains.forEach(function (d) {
+        var idx = book.header.indexOf(d.name);
+        if (idx < 0) return;
+        var isCurrent = statuses[d.name] === '이번 수행';
+        classNumbers.forEach(function (num) {
+          var row = book.data[rowIndex[p.grade + '-' + p.cls + '-' + num]];
+          var raw = row ? row[idx] : '';
+          var absent = isAbsentValue_(raw);
+          if (absent) absentPending++;
+          if (isCurrent) {
+            performTotal++;
+            if (raw !== '' && raw !== null && raw !== undefined && !absent) performDone++;
+          }
+        });
+      });
+    });
+  });
+
+  return {
+    subjectCount: names.length,
+    absentPending: absentPending,
+    performRate: performTotal ? Math.round(performDone / performTotal * 100) : null
+  };
 }
 
 function getSheetUrl(password) {

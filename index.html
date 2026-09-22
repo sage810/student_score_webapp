@@ -104,7 +104,7 @@
   }
   input::placeholder{ color: var(--ink-faint); }
 
-  /* 번호 드롭다운: 브라우저 기본 select는 열리는 방향을 고를 수 없어서, 항상 아래로 열리는 목록으로 대체 */
+  /* 반·번호 드롭다운: 브라우저 기본 select는 열리는 방향을 고를 수 없어서, 항상 아래로 열리는 목록으로 대체 */
   .combo{ position:relative; }
   .combo-btn{ display:block; text-align:left; cursor:pointer; }
   .combo-list[hidden]{ display:none; }
@@ -315,8 +315,12 @@
             <select id="gradeSelect" required><option value="">선택</option></select>
           </div>
           <div class="field">
-            <label for="classSelect">반</label>
-            <select id="classSelect" required disabled><option value="">선택</option></select>
+            <label for="classBtn">반</label>
+            <div class="combo">
+              <button type="button" class="combo-btn" id="classBtn" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="classList" disabled>선택</button>
+              <ul class="combo-list" id="classList" role="listbox" aria-label="반" hidden></ul>
+              <select id="classSelect" required disabled hidden><option value="">선택</option></select>
+            </div>
           </div>
           <div class="field">
             <label for="numberBtn">번호</label>
@@ -484,10 +488,8 @@ classSelect.addEventListener('change', function(){
   numberSelect.disabled = false;
 });
 
-/* 번호 드롭다운 (항상 아래로 열림). 값은 숨겨진 numberSelect 에 그대로 두고, 목록만 다시 그린다 */
-(function(){
-  var btn = document.getElementById('numberBtn');
-  var list = document.getElementById('numberList');
+/* 반·번호 드롭다운 (항상 아래로 열림). 값은 숨겨진 select 에 그대로 두고, 목록만 다시 그린다 */
+function setupDownCombo(select, btn, list, idPrefix){
   var activeIdx = -1;
 
   function items(){ return Array.prototype.slice.call(list.children); }
@@ -495,19 +497,19 @@ classSelect.addEventListener('change', function(){
 
   function refresh(){
     list.innerHTML = '';
-    Array.prototype.forEach.call(numberSelect.options, function(o, i){
+    Array.prototype.forEach.call(select.options, function(o, i){
       if (!o.value) return;
       var li = document.createElement('li');
-      li.id = 'numberOpt' + i;
+      li.id = idPrefix + i;
       li.setAttribute('role', 'option');
       li.dataset.value = o.value;
       li.textContent = o.textContent;
-      li.setAttribute('aria-selected', o.value === numberSelect.value ? 'true' : 'false');
+      li.setAttribute('aria-selected', o.value === select.value ? 'true' : 'false');
       list.appendChild(li);
     });
-    btn.textContent = numberSelect.value || numberSelect.options[0].textContent;
-    btn.disabled = numberSelect.disabled;
-    if (numberSelect.disabled) close();
+    btn.textContent = select.value || select.options[0].textContent;
+    btn.disabled = select.disabled;
+    if (select.disabled) close();
   }
 
   function setActive(i){
@@ -523,7 +525,7 @@ classSelect.addEventListener('change', function(){
     if (btn.disabled || !list.children.length) return;
     list.hidden = false;
     btn.setAttribute('aria-expanded', 'true');
-    var sel = items().findIndex(function(el){ return el.dataset.value === numberSelect.value; });
+    var sel = items().findIndex(function(el){ return el.dataset.value === select.value; });
     setActive(sel < 0 ? 0 : sel);
     list.scrollIntoView({ block:'nearest' });
   }
@@ -535,8 +537,8 @@ classSelect.addEventListener('change', function(){
   }
 
   function choose(value){
-    numberSelect.value = value;
-    numberSelect.dispatchEvent(new Event('change', { bubbles:true }));
+    select.value = value;
+    select.dispatchEvent(new Event('change', { bubbles:true }));
     refresh();
     close();
     btn.focus();
@@ -564,9 +566,12 @@ classSelect.addEventListener('change', function(){
     if (isOpen() && !e.target.closest('.combo')) close();
   });
 
-  new MutationObserver(refresh).observe(numberSelect, { childList:true, attributes:true, attributeFilter:['disabled'] });
+  new MutationObserver(refresh).observe(select, { childList:true, attributes:true, attributeFilter:['disabled'] });
   refresh();
-})();
+}
+
+setupDownCombo(classSelect, document.getElementById('classBtn'), document.getElementById('classList'), 'classOpt');
+setupDownCombo(numberSelect, document.getElementById('numberBtn'), document.getElementById('numberList'), 'numberOpt');
 
 [gradeSelect, classSelect, numberSelect, nameInput].forEach(function(el){
   el.addEventListener('input', hideError);
