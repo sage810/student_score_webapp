@@ -30,7 +30,6 @@
   body{
     font-family:'Pretendard', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg); color: var(--ink);
-    padding-bottom: 88px; /* 하단 안내바 공간 */
   }
 
   #dashboard[hidden]{ display:none; }
@@ -70,13 +69,15 @@
     padding: 20px 24px; display:flex; align-items:center;
   }
   .topbar-title{ display:flex; align-items:center; gap:12px; flex-shrink:0; cursor:pointer; border-radius:10px; }
-  .topbar-title:focus-visible, .topbar-logout:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
-  .topbar-logout{
-    margin-left:auto; flex-shrink:0; padding:0 16px; min-height:44px; border-radius:8px;
-    border:1px solid rgba(255,255,255,0.4); background:none; color:rgba(255,255,255,0.9);
-    font-size:12.5px; font-weight:600; font-family:inherit; cursor:pointer; white-space:nowrap;
+  .topbar-title:focus-visible, .topbar-logout:focus-visible, .topbar-sheet-btn:focus-visible{ outline:2px solid #fff; outline-offset:3px; }
+  .topbar-right{ display:flex; align-items:center; gap:8px; margin-left:auto; flex-shrink:0; }
+  .topbar-sheet-btn, .topbar-logout{
+    flex-shrink:0; padding:0 16px; min-height:44px; border-radius:var(--radius-md);
+    border:none; background:var(--purple); color:#fff;
+    font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer; white-space:nowrap;
   }
-  .topbar-logout:hover{ background:rgba(255,255,255,0.14); color:#fff; }
+  .topbar-sheet-btn{ display:inline-flex; align-items:center; gap:6px; }
+  .topbar-sheet-btn:hover, .topbar-logout:hover{ background:var(--purple-dark); }
   .topbar-badge{
     width:34px; height:34px; border-radius:10px; background: var(--purple);
     display:flex; align-items:center; justify-content:center; font-size:16px;
@@ -84,7 +85,7 @@
   .topbar h1{ font-size:16px; font-weight:700; margin:0; }
 
   .topbar-nav{
-    display:flex; gap:20px; flex-wrap:wrap; justify-content:center;
+    display:flex; gap:20px; flex-wrap:nowrap; justify-content:center;
     position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
   }
   .topbar-nav button{
@@ -539,36 +540,18 @@
     text-align:center; padding:40px 20px; color:var(--ink-soft); font-size:13.5px;
   }
 
-  /* 페이지 맨 아래 제작자 표시 (화면 아래 고정 바에 가려지지 않게 아래 여백을 넉넉히) */
+  /* 페이지 맨 아래 제작자 표시 */
   .credit{
     display:flex; align-items:center; justify-content:center; gap:8px;
-    margin:36px 0 96px; color:var(--ink-soft); font-size:13px; font-weight:600;
+    margin:36px 0 40px; color:var(--ink-soft); font-size:13px; font-weight:600;
   }
 
   .credit-link{ display:inline-flex; color:inherit; border-radius:6px; }
   .credit-link:hover{ color:var(--ink); }
   .credit-link:focus-visible{ outline:2px solid var(--purple); outline-offset:3px; }
 
-  /* 시트 안내 바 */
-  .sheet-bar{
-    position:fixed; left:0; right:0; bottom:0; z-index:30;
-    background: var(--surface); border-top:1px solid var(--border);
-    box-shadow: 0 -6px 20px rgba(16,17,20,0.06);
-    padding: 16px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px;
-  }
-  .sheet-bar-text{ font-size:12.5px; color: var(--ink-soft); line-height:1.5; }
-  .sheet-bar-text b{ color: var(--ink); }
-  .btn-sheet{
-    flex-shrink:0; display:inline-flex; align-items:center; gap:8px;
-    padding:12px 16px; font-size:13px; font-weight:700; font-family:inherit;
-    color: var(--purple-dark); background: var(--purple-tint); border:none;
-    border-radius:10px; cursor:pointer; white-space:nowrap;
-    text-decoration:none;
-  }
-  .btn-sheet:hover{ background: rgba(133,91,251,0.22); }
-
   .toast{
-    position:fixed; left:50%; bottom:96px; transform:translateX(-50%);
+    position:fixed; left:50%; bottom:32px; transform:translateX(-50%);
     background: var(--ink); color:#fff; font-size:13px; font-weight:500;
     padding:12px 20px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.2);
     z-index:40; opacity:0; pointer-events:none; transition: opacity .2s ease, transform .2s ease;
@@ -576,23 +559,15 @@
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
   .toast.error{ background: var(--red); }
 
-  @media (max-width: 720px){
-    .sheet-bar{ flex-direction:column; align-items:stretch; text-align:center; }
-  }
-  /* 상단 메뉴: 화면이 줄어도 가능한 한 한 줄에 두고(글자·간격만 줄임), 더 좁아지면 4열(2행) 격자로, 그보다 더 좁아지면 3열 격자로 나눈다 */
+  /* 상단 메뉴: 전체 화면에서는 한 줄, 좁아지면 5열(2행) 격자로, 더 좁아지면 3열(3행) 격자로 나눈다 */
   @media (max-width: 1100px){
-    .topbar{ padding:16px 16px; gap:12px; }
-    .topbar-nav{
-      position:static; transform:none; flex:1; min-width:0;
-      flex-wrap:nowrap; justify-content:center; gap:clamp(8px, 1.6vw, 20px);
-    }
-    .topbar-nav button{ font-size:clamp(11px, 1.4vw, 13px); }
-  }
-  @media (max-width: 900px){
-    .topbar{ flex-wrap:wrap; align-items:center; gap:12px; }
+    .topbar{ flex-wrap:wrap; align-items:center; gap:12px; padding:16px 16px; }
     .topbar-title{ flex:1; }
-    .topbar-logout{ order:2; margin-left:0; }
-    .topbar-nav{ order:3; flex:0 0 100%; display:grid; grid-template-columns:repeat(4, 1fr); gap:8px 12px; justify-content:stretch; }
+    .topbar-right{ order:2; margin-left:0; }
+    .topbar-nav{
+      order:3; flex:0 0 100%; position:static; transform:none;
+      display:grid; grid-template-columns:repeat(5, 1fr); gap:8px 12px; justify-content:stretch;
+    }
     .topbar-nav button{ white-space:normal; word-break:keep-all; font-size:12.5px; padding:8px 4px; text-align:center; }
     .card{ scroll-margin-top:155px; }
   }
@@ -663,7 +638,17 @@
     <button type="button" data-section="notice">결시자 수행안내</button>
     <button type="button" data-section="xlsxExport">엑셀 파일 다운로드</button>
   </div>
-  <button type="button" class="topbar-logout" id="logoutBtn">로그아웃</button>
+  <div class="topbar-right">
+    <button type="button" class="topbar-sheet-btn" id="openSheetBtn">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-6-5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M13 3v5h6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M9 13h6M9 17h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      구글 시트에서 열기
+    </button>
+    <button type="button" class="topbar-logout" id="logoutBtn">로그아웃</button>
+  </div>
 </div>
 
 <div class="wrap">
@@ -1061,20 +1046,6 @@
     <span>@sage810</span>
   </footer>
 
-</div>
-
-<div class="sheet-bar">
-  <div class="sheet-bar-text">
-    점수를 수정한 뒤에는 <b>반드시 저장 버튼</b>을 눌러주세요. 학년별 반 개수는 구글 시트의 "설정" 탭에서 직접 관리합니다.
-  </div>
-  <button class="btn-sheet" id="openSheetBtn">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-6-5Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-      <path d="M13 3v5h6" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
-      <path d="M9 13h6M9 17h6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-    </svg>
-    구글 시트에서 열기
-  </button>
 </div>
 </div>
 
