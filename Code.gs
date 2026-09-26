@@ -9,11 +9,13 @@
  *   설정  : A열 키 / B열 값  (연도, 학기, 비밀번호, 1학년반수, 2학년반수, 3학년반수)
  *          "비밀번호"는 교사 관리 화면(?page=teacher) 접속 시 입력해야 하는 값 — 시트에서 직접 바꾸면 됨
  *          "N학년반수"는 그 학년의 반이 몇 반까지 있는지(매년 바뀔 수 있음) — 시트에서 숫자만 바꾸면 반영됨
- *   과목  : 과목명 | 총점 | 학년반목록 | ID | 개별수강생  (2행부터, 최대 5개 과목. "총점"은 영역 배점 합과 별개로 선언하는 만점 — 100점이 아닐 수도 있음.
+ *   과목  : 과목명 | 총점 | 학년반목록 | ID  (2행부터, 최대 5개 과목. "총점"은 영역 배점 합과 별개로 선언하는 만점 — 100점이 아닐 수도 있음.
  *          "학년반목록"은 이 과목을 반 전체가 듣는 학년-반 조합을 "학년-반" 형식으로 세미콜론(;)으로 이어붙인 문자열. 예: "1-1;1-2;2-3"
- *          "ID"는 화면에 안 보이는 내부 식별자 — 같은 이름의 과목을 학년별로 여러 개 만들어도(예: "기술·가정"을 1학년용/2학년용 각각) 영역이 안 섞이게 해줌
- *          "개별수강생"은 반 전체가 아니라 학생 한 명씩 이 과목을 듣는 경우 "학년-반-번호"를 세미콜론(;)으로 이은 문자열. 예: "2-3-5;3-1-12"
- *          → 이 과목의 학급 = 학년반목록 + 개별수강생이 속한 학급. 개별수강생으로만 들어간 학급에서는 그 학생들만 이 과목 화면에 나옴)
+ *          "ID"는 화면에 안 보이는 내부 식별자 — 같은 이름의 과목을 학년별로 여러 개 만들어도(예: "기술·가정"을 1학년용/2학년용 각각) 영역이 안 섞이게 해줌)
+ *   출석명단_과목명 : 학년 | 반 | 번호 | 이름  — 반 전체가 아니라 학생 한 명씩 그 과목을 듣는 개별수강생 (과목명마다 별도 시트.
+ *          수업 과목 설정의 "이 과목을 수강하는 학생 추가하기"로 학생을 추가하면 자동으로 만들어짐. 시트에서 직접 행을 더하거나 지워도 됨 — 학년·반·번호로 판단하고 이름은 확인용)
+ *          → 이 과목의 학급 = 학년반목록 + 출석명단 학생의 학급. 출석명단으로만 들어간 학급에서는 그 학생들만 이 과목 화면에 나옴
+ *          (이름이 같은 과목이 학년별로 여럿이면 학생의 학년을 듣는 쪽 과목에 붙음)
  *   영역메모 : 과목ID | 학년 | 반 | 영역명 | 메모  — 응시·결시 관리의 "영역별 메모"(반마다 따로). 영역 상태는 여기에 없고 "영역" 시트의 "상태" 열에서 관리함
  *          (예전 이름은 "진행상태" — 그 이름의 시트가 있으면 처음 열 때 "영역메모"로 이름만 바뀌고 메모는 그대로 남음)
  *   영역  : 과목ID | 영역명 | 배점 | 그룹 | 상태  (그룹이 같으면 화면에서 한 묶음으로 표시. "과목명"이 아니라 "과목ID" 기준이라 이름이 같은 과목끼리도 안 섞임)
@@ -70,8 +72,8 @@ function ensureSheets_() {
   if (!subj) {
     seedDemoScores = true;
     subj = ss.insertSheet('과목');
-    subj.getRange('A1:E1').setValues([SUBJECT_HEADER]);
-    subj.getRange('A2:E2').setValues([[DEMO_SUBJECT, 100, '1-1;1-2;2-1;2-2', DEMO_SUBJECT_ID, '']]);
+    subj.getRange('A1:D1').setValues([SUBJECT_HEADER]);
+    subj.getRange('A2:D2').setValues([[DEMO_SUBJECT, 100, '1-1;1-2;2-1;2-2', DEMO_SUBJECT_ID]]);
   } else if (String(subj.getRange(1, 2).getValue()) === '현재영역') {
     // 예전 형식(과목명 | 현재영역 | 총점 | 학년반목록 | ID)에서 "현재영역" 열을 없앤다. 이번 수행 표시는 "영역" 시트의 상태로 대신한다.
     // 없애기 전에 적혀 있던 현재영역은 아래에서 그 영역의 상태("이번 수행")로 옮겨 둔다.
@@ -81,9 +83,6 @@ function ensureSheets_() {
       .map(function (r) { return { id: String(r[4]), domain: String(r[1]), pairs: parseClassPairs_(r[3]) }; });
     subj.deleteColumn(2);
   }
-  // "개별수강생" 열(반 전체가 아니라 학생 한 명씩 수강)이 없는 예전 과목 시트에는 열을 더한다
-  if (subj.getMaxColumns() < 5) subj.insertColumnsAfter(subj.getMaxColumns(), 5 - subj.getMaxColumns());
-  if (String(subj.getRange(1, 5).getValue()) !== SUBJECT_HEADER[4]) subj.getRange(1, 5).setValue(SUBJECT_HEADER[4]);
 
   var dom = ss.getSheetByName('영역');
   if (!dom) {
@@ -121,6 +120,19 @@ function ensureSheets_() {
     roster.getRange(2, 1, rows.length, 4).setValues(rows);
   } else {
     migrateRosterIfNeeded_(roster);
+  }
+
+  // 한때 과목 시트 E열("개별수강생")에 "학년-반-번호;..."로 적던 개별수강생을 "출석명단_과목명" 시트로 옮기고 그 열은 없앤다
+  if (subj.getMaxColumns() >= 5 && String(subj.getRange(1, 5).getValue()) === '개별수강생') {
+    var rosterRows = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
+    var enrollByName = {};
+    if (subj.getLastRow() > 1) {
+      subj.getRange(2, 1, subj.getLastRow() - 1, 5).getValues().forEach(function (r) {
+        if (r[0]) enrollByName[r[0]] = (enrollByName[r[0]] || []).concat(parseStudentList_(r[4]));
+      });
+    }
+    Object.keys(enrollByName).forEach(function (name) { writeEnrollSheet_(ss, name, enrollByName[name], rosterRows); });
+    subj.deleteColumn(5);
   }
 
   // 점수는 과목마다 별도 시트("점수_과목명")에 저장한다. 데모 과목의 점수 시트는 처음 만들 때만 채운다.
@@ -181,7 +193,9 @@ function ensureSheets_() {
   return ss;
 }
 
-var SUBJECT_HEADER = ['과목명', '총점', '학년반목록', 'ID', '개별수강생'];
+var SUBJECT_HEADER = ['과목명', '총점', '학년반목록', 'ID'];
+var ENROLL_PREFIX = '출석명단';
+var ENROLL_HEADER = ['학년', '반', '번호', '이름'];
 var DOMAIN_STATUSES = ['완료', '이번 수행', '예정'];
 var DOMAIN_HEADER = ['과목ID', '영역명', '배점', '그룹', '상태'];
 var MEMO_SHEET = '영역메모';
@@ -272,7 +286,7 @@ function serializeClassPairs_(pairs) {
   return (pairs || []).map(function (p) { return p.grade + '-' + p.cls; }).join(';');
 }
 
-// "개별수강생" 칸: "학년-반-번호;학년-반-번호" → [{grade, cls, number}]
+// 예전 과목 시트 "개별수강생" 칸: "학년-반-번호;학년-반-번호" → [{grade, cls, number}] (출석명단 시트로 옮길 때만 씀)
 function parseStudentList_(str) {
   return String(str || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean).map(function (item) {
     var parts = item.split('-');
@@ -280,23 +294,69 @@ function parseStudentList_(str) {
   }).filter(function (s) { return s.grade && s.cls && s.number; });
 }
 
-function serializeStudentList_(list) {
-  return (list || []).map(function (s) { return s.grade + '-' + s.cls + '-' + s.number; }).join(';');
+// "출석명단_과목명" 시트의 개별수강생 → [{grade, cls, number}] (시트가 없으면 없음)
+function readEnrollSheet_(ss, subject) {
+  var sheet = ss.getSheetByName(subjectSheetName_(ENROLL_PREFIX, subject));
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  var seen = {}, list = [];
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(function (r) {
+    if (r[0] === '' || r[1] === '' || r[2] === '') return;
+    var key = r[0] + '-' + r[1] + '-' + r[2];
+    if (seen[key]) return;
+    seen[key] = true;
+    list.push({ grade: String(r[0]), cls: String(r[1]), number: String(r[2]) });
+  });
+  return list;
+}
+
+// 개별수강생을 "출석명단_과목명" 시트에 다시 쓴다. 이름은 명단에서 찾아 채운다.
+// 학생이 없으면 시트를 새로 만들지 않고, 이미 있던 시트는 머리글만 남긴다.
+function writeEnrollSheet_(ss, subject, students, rosterRows) {
+  var name = subjectSheetName_(ENROLL_PREFIX, subject);
+  var sheet = ss.getSheetByName(name);
+  if (!sheet && !students.length) return;
+  if (!sheet) sheet = ss.insertSheet(name);
+  var nameOf = {};
+  rosterRows.forEach(function (r) { nameOf[r[0] + '-' + r[1] + '-' + r[2]] = r[3]; });
+  var seen = {}, rows = [];
+  students.forEach(function (s) {
+    var key = s.grade + '-' + s.cls + '-' + s.number;
+    if (seen[key]) return;
+    seen[key] = true;
+    rows.push([s.grade, s.cls, s.number, nameOf[key] || '']);
+  });
+  rows = sortByClassOrder_(rows, 0, 1, 2);
+  sheet.clear();
+  sheet.getRange(1, 1, 1, 4).setValues([ENROLL_HEADER]);
+  if (rows.length) sheet.getRange(2, 1, rows.length, 4).setValues(rows);
 }
 
 function getSubjects_(ss) {
   var sheet = ss.getSheetByName('과목');
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
-  return sheet.getRange(2, 1, lastRow - 1, 5).getValues()
+  var subjects = sheet.getRange(2, 1, lastRow - 1, 4).getValues()
     .filter(function (r) { return r[0]; })
     .map(function (r) {
       return {
         name: String(r[0]), declaredTotal: Number(r[1]) || 0,
-        classPairs: parseClassPairs_(r[2]), id: String(r[3] || ''),
-        students: parseStudentList_(r[4])
+        classPairs: parseClassPairs_(r[2]), id: String(r[3] || ''), students: []
       };
     });
+  // 개별수강생은 과목명마다 "출석명단_과목명" 시트에서. 이름이 같은 과목이 여럿이면 그 학생의 학년을 듣는 쪽에 붙인다.
+  var done = {};
+  subjects.forEach(function (s) {
+    if (done[s.name]) return;
+    done[s.name] = true;
+    var same = subjects.filter(function (t) { return t.name === s.name; });
+    readEnrollSheet_(ss, s.name).forEach(function (st) {
+      var target = same.filter(function (t) {
+        return t.classPairs.some(function (p) { return String(p.grade) === st.grade; });
+      })[0] || same[0];
+      target.students.push(st);
+    });
+  });
+  return subjects;
 }
 
 // 이 과목이 나오는 학급: 반 전체가 듣는 학급(학년반목록) + 개별수강생이 속한 학급
@@ -682,12 +742,24 @@ function saveSubjects(password, subjects) {
 
     var sheet = ss.getSheetByName('과목');
     sheet.clear();
-    sheet.getRange(1, 1, 1, 5).setValues([SUBJECT_HEADER]);
+    sheet.getRange(1, 1, 1, 4).setValues([SUBJECT_HEADER]);
     if (clean.length) {
-      sheet.getRange(2, 1, clean.length, 5).setValues(clean.map(function (s) {
-        return [s.name, s.declaredTotal, serializeClassPairs_(s.classPairs), s.id, serializeStudentList_(s.students)];
+      sheet.getRange(2, 1, clean.length, 4).setValues(clean.map(function (s) {
+        return [s.name, s.declaredTotal, serializeClassPairs_(s.classPairs), s.id];
       }));
     }
+
+    // 개별수강생은 과목명마다 "출석명단_과목명" 시트에 (이름이 같은 과목은 한 시트에 모음)
+    var roster = ss.getSheetByName('명단');
+    var rosterRows = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
+    var enrollByName = {};
+    clean.forEach(function (s) {
+      var valid = s.students.filter(function (p) { return p && p.grade && p.cls && p.number; }).map(function (p) {
+        return { grade: String(p.grade), cls: String(p.cls), number: String(p.number) };
+      });
+      enrollByName[s.name] = (enrollByName[s.name] || []).concat(valid);
+    });
+    Object.keys(enrollByName).forEach(function (name) { writeEnrollSheet_(ss, name, enrollByName[name], rosterRows); });
     return { ok: true };
   } finally {
     lock.releaseLock();
