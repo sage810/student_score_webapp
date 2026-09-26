@@ -45,8 +45,8 @@
   .screen.active{ display:block; animation: fadeUp .35s ease; }
 
   #screen-login{ position:relative; }
-  #screen-login .tab-bar{ position:relative; z-index:10; margin-bottom:-12px; }
-  #screen-login .login-card{ position:relative; z-index:1; }
+  #screen-login .tab-bar{ position:relative; z-index:10; margin-bottom:-14px; padding:0 20px; }
+  #screen-login .login-card{ position:relative; z-index:1; margin-top:0; padding-top:36px; }
   @keyframes fadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
 
   /* 페이지 맨 아래 제작자 표시 (두 화면 공통) */
@@ -308,6 +308,10 @@
 <div class="app">
 
   <section id="screen-login" class="screen active">
+    <div class="tab-bar">
+      <button type="button" class="tab-link active" id="studentTab" aria-selected="true">🎓 학생 조회</button>
+      <a href="teacher.html" class="tab-link" role="button">👨‍🏫 관리자 로그인</a>
+    </div>
     <div class="login-card">
       <div class="brand">
         <span class="brand-badge" aria-hidden="true">
@@ -324,10 +328,6 @@
         </div>
         <h1>수행평가 조회</h1>
         <p class="brand-sub">학년·반·번호와 이름을 입력하면<br/>내 수행평가 결과를 확인할 수 있어요</p>
-      </div>
-      <div class="tab-bar">
-        <button type="button" class="tab-link active" id="studentTab" aria-selected="true">🎓 학생 조회</button>
-        <a href="teacher.html" class="tab-link" role="button">👨‍🏫 관리자 로그인</a>
       </div>
       <form id="loginForm" novalidate>
         <div class="field-row">
