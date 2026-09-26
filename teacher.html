@@ -177,82 +177,67 @@
   }
   .home-subject-empty{ font-size:12.5px; color:var(--ink-soft); }
 
-  .home-stats{ display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin:0 0 28px; }
-  @media (max-width:640px){ .home-stats{ grid-template-columns:1fr; } }
-  .home-stat{
-    display:flex; align-items:center; gap:12px;
-    border:1px solid var(--border); border-radius:14px; padding:12px 16px; background:var(--surface);
-    animation:homeRise .28s ease-out both;
+  /* 진행 흐름 보드: 준비 → 진행 → 확인·출력 세 칸을 화살표로 잇고, 칸 안에서 단계(1~8)가 위에서 아래로 이어진다 */
+  .home-flow-title{ margin:0 0 12px; font-size:16px; font-weight:800; }
+  .home-flow{ display:grid; grid-template-columns:minmax(0,1fr) 32px minmax(0,1fr) 32px minmax(0,1fr); align-items:start; }
+  .home-flow-arrow{ display:flex; justify-content:center; padding-top:16px; color:var(--ink-faint); }
+  .home-flow-arrow svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .home-phase{
+    display:flex; flex-direction:column; gap:4px; padding:12px; border-radius:var(--radius-lg); background:#f1f1f6;
+    animation:homeRise .32s ease-out both;
   }
-  .home-stat-icon{
-    width:36px; height:36px; border-radius:10px; background:var(--bg); color:var(--ink-soft);
-    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  .home-phase.is-loop{ background:rgba(133,91,251,0.10); } /* 진행: 수행평가마다 반복되는 칸 */
+  .home-phase:nth-child(3){ animation-delay:60ms; }
+  .home-phase:nth-child(5){ animation-delay:120ms; }
+  .home-phase-head{ display:flex; flex-direction:column; align-items:flex-start; gap:4px; padding:4px 4px 8px; }
+  .home-phase-head h3{ margin:0; font-size:15px; font-weight:800; }
+  .home-phase-when{ font-size:12px; font-weight:600; color:var(--ink-soft); }
+  .home-phase-loop{
+    display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px;
+    background:var(--purple); color:#fff; font-size:12px; font-weight:700;
   }
-  .home-stat-icon svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:block; }
-  .home-stat-body{ min-width:0; }
-  .home-stat-label{ font-size:11.5px; font-weight:700; color:var(--ink-soft); margin-bottom:2px; }
-  .home-stat-value{ font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; }
-  .home-stat-value small{ font-size:12px; font-weight:600; color:var(--ink-soft); margin-left:2px; }
-  .home-stat.warn .home-stat-icon{ background:var(--red-tint); color:var(--red); }
-  .home-stat.warn .home-stat-value{ color:var(--red); }
-  .home-stat:nth-child(2){ animation-delay:40ms; }
-  /* 영역 상태 관리 카드: 지금 "이번 수행"인 영역 이름 (보라 알약 = 수행 영역 관리의 "이번 수행" 색) */
-  .home-stat.status .home-stat-icon{ background:var(--purple-tint); color:var(--purple-dark); }
-  .home-stat-current{ display:flex; align-items:center; flex-wrap:wrap; gap:4px 8px; font-size:14px; font-weight:700; color:var(--ink); line-height:1.4; }
-  .home-stat-current.is-empty{ font-weight:600; color:var(--ink-soft); }
-  .home-stat-pill{ flex-shrink:0; padding:2px 8px; border-radius:999px; background:var(--purple); color:#fff; font-size:12px; font-weight:700; }
-  .home-stat-sub{ display:block; margin-top:2px; font-size:12px; font-weight:600; color:var(--ink-soft); }
-  /* 누를 수 있는 통계 카드("결시 대기" → 결시자 수행안내, "영역 상태 관리" → 수행 영역 관리) */
-  .home-stat-link{
-    width:100%; font-family:inherit; color:inherit; text-align:left; cursor:pointer;
-    transition: border-color .12s ease, box-shadow .12s ease;
+  .home-phase-loop svg, .home-loop-note svg{ width:13px; height:13px; flex-shrink:0; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+  .home-loop-note{
+    display:flex; align-items:center; justify-content:center; gap:6px; margin-top:8px; padding:8px 12px;
+    border:1.5px dashed rgba(113,50,245,0.4); border-radius:12px;
+    font-size:12px; font-weight:600; color:var(--purple-dark); text-align:center; word-break:keep-all;
   }
-  .home-stat-link .home-stat-body, .home-stat-link .home-stat-label, .home-stat-link .home-stat-value{ display:block; }
-  .home-stat-link:hover{ border-color:var(--purple); box-shadow:var(--shadow-card); }
-  .home-stat-link:focus-visible{ outline:2px solid var(--purple); outline-offset:2px; }
-  .home-stat-go{ display:flex; margin-left:auto; color:var(--ink-faint); transition: color .12s ease; }
-  .home-stat-link:hover .home-stat-go{ color:var(--purple); }
+  .home-step-down{ display:flex; justify-content:center; color:#9a9cb0; }
+  .home-step-down svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
-  .home-phase{ margin-bottom:28px; animation:homeRise .32s ease-out both; }
-  .home-phase:last-child{ margin-bottom:0; }
-  .home-phase:nth-child(2){ animation-delay:60ms; }
-  .home-phase:nth-child(3){ animation-delay:120ms; }
-  .home-phase-head{
-    display:flex; align-items:baseline; gap:8px; margin-bottom:12px;
-    padding-bottom:8px; border-bottom:1px solid var(--border);
-  }
-  .home-phase-head .home-phase-no{
-    width:20px; height:20px; border-radius:6px; background:var(--purple); color:#fff;
-    font-size:11px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
-  }
-  .home-phase-head h3{ font-size:13.5px; font-weight:800; margin:0; }
-  .home-phase-head .home-phase-desc{ font-size:11.5px; color:var(--ink-faint); }
-
-  .home-grid{ display:grid; gap:16px; }
-  .home-grid-3{ grid-template-columns:repeat(3, 1fr); }
-  .home-grid-2{ grid-template-columns:repeat(2, 1fr); }
-  @media (max-width:640px){ .home-grid-3, .home-grid-2{ grid-template-columns:repeat(2, 1fr); } }
   .home-card{
-    text-align:left; font-family:inherit; cursor:pointer; position:relative;
-    border:1.5px solid var(--border); border-radius:16px; background:var(--surface);
-    padding:16px 12px 12px; display:flex; flex-direction:column; gap:12px;
+    width:100%; display:flex; flex-direction:column; gap:8px; padding:12px 16px 16px;
+    border:1px solid var(--border); border-radius:14px; background:var(--surface);
+    font-family:inherit; text-align:left; color:var(--ink); cursor:pointer;
     transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
   }
   .home-card:hover{ transform:translateY(-2px); box-shadow:var(--shadow-card); border-color:var(--purple); }
   .home-card:focus-visible{ outline:2px solid var(--purple); outline-offset:2px; }
-  .home-card-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
-  .home-icon{
-    width:36px; height:36px; border-radius:11px; background:var(--purple-tint); color:var(--purple-dark);
-    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  .home-card.is-now{ border:1.5px solid var(--purple); box-shadow:0 4px 16px rgba(113,50,245,0.12); } /* 이번 수행 점수 입력 중 */
+  .home-card-top{ display:flex; align-items:center; gap:8px; }
+  .home-card-no{
+    width:24px; height:24px; flex-shrink:0; border-radius:999px; background:var(--purple); color:#fff;
+    font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;
   }
-  .home-icon svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; display:block; }
-  .home-card-arrow{
-    color:var(--ink-faint); opacity:0; transform:translateX(-4px);
-    transition:opacity .12s ease, transform .12s ease, color .12s ease;
+  .home-card-title{ flex:1; min-width:0; font-size:14px; font-weight:700; line-height:1.3; }
+  .home-card-icon{ width:18px; height:18px; flex-shrink:0; color:var(--purple-dark); stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .home-card-desc{ font-size:12.5px; color:var(--ink-soft); line-height:1.5; }
+  /* 카드 안 현재 상황 (홈 통계): 이번 수행 영역 / 결시 건수 / 점수 입력률 */
+  .home-card-status:empty{ display:none; }
+  .home-card-status{ display:flex; flex-wrap:wrap; gap:6px; }
+  .home-chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
+  .home-chip.is-current{ padding-left:4px; background:var(--purple-tint); color:var(--purple-dark); }
+  .home-chip.is-current b{ padding:2px 8px; border-radius:999px; background:var(--purple); color:#fff; font-weight:700; }
+  .home-chip.is-absent{ background:var(--red-tint); color:var(--red); }
+  .home-chip.is-muted{ background:#f1f1f6; color:var(--ink-soft); }
+  .home-progress{ display:flex; align-items:center; gap:8px; width:100%; font-size:12px; font-weight:700; color:var(--purple-dark); }
+  .home-progress-bar{ flex:1; height:6px; border-radius:999px; background:#f1f1f6; overflow:hidden; }
+  .home-progress-bar span{ display:block; height:100%; background:var(--purple); }
+  /* 본문 폭이 좁으면 세 칸을 위아래로 쌓고, 칸 사이 화살표도 아래 방향으로 */
+  @media (max-width:1000px){
+    .home-flow{ grid-template-columns:minmax(0,1fr); }
+    .home-flow-arrow{ padding:4px 0; transform:rotate(90deg); }
   }
-  .home-card:hover .home-card-arrow{ opacity:1; transform:translateX(0); color:var(--purple); }
-  .home-card-title{ font-size:13.5px; font-weight:700; line-height:1.3; }
-  .home-card-desc{ font-size:11.5px; color:var(--ink-soft); line-height:1.5; }
 
   label{ display:block; font-size:12px; font-weight:600; color:var(--ink-soft); margin-bottom:8px; }
   select, input[type="text"], input[type="number"], input[type="password"], input[type="date"], textarea{
@@ -757,8 +742,8 @@
       <h2 class="home-hero-title">오늘은 어떤 걸 살펴볼까요?</h2>
       <div class="home-subject-pills" id="homeSubjectPills"></div>
     </div>
-    <div class="home-stats" id="homeStats"></div>
-    <div id="homePhases"></div>
+    <h3 class="home-flow-title">이렇게 진행돼요</h3>
+    <div class="home-flow" id="homePhases"></div>
   </div>
 
   <!-- 0. 학생 명단 관리 -->
@@ -1593,51 +1578,65 @@ setupAccordion();
 
 /* ---- 홈 ---- */
 var HOME_SECTIONS = [
-  { key:'roster', title:'학생 명단 관리', desc:'학년·반을 고른 뒤 불러오기를 누르세요.', phase:0,
+  { key:'roster', title:'학생 명단 관리', desc:'학년·반별 학생 명단을 불러오고 고쳐요.', phase:0,
     icon:'<path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M19 20v-1.5a3.5 3.5 0 0 0-2.5-3.36"/><path d="M14.5 4.13a3.5 3.5 0 0 1 0 6.74"/>' },
-  { key:'config', title:'수업 과목 설정', desc:'한 학기에 최대 5개 과목까지 맡을 수 있어요.', phase:0,
+  { key:'config', title:'수업 과목 설정', desc:'맡은 과목과 수업하는 학년·반을 정해요.', phase:0,
     icon:'<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16.5A1.5 1.5 0 0 1 18.5 21H6.5A2.5 2.5 0 0 1 4 18.5v-13Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/><path d="M8 7.5h8M8 10.5h5"/>' },
-  { key:'domains', title:'수행 영역 관리', desc:'영역 삭제 시 해당 영역의 점수가 함께 삭제돼요.', phase:0,
+  { key:'domains', title:'수행 영역 관리', desc:'영역·배점을 정하고, 영역 상태를 바꿔요.', phase:0,
     icon:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/>' },
-  { key:'attendance', title:'응시·결시 관리', desc:'체크하면 그 학생의 해당 영역이 결시로 표시돼요.', phase:1,
+  { key:'attendance', title:'응시·결시 관리', desc:'수행평가를 못 본 학생을 결시로 체크해요.', phase:1,
     icon:'<rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="M8.5 14l2.2 2.2L15.5 12"/>' },
-  { key:'scores', title:'반별 점수 입력 표', desc:'과목·학년·반을 고른 뒤 불러오기를 눌러주세요.', phase:1,
+  { key:'scores', title:'반별 점수 입력 표', desc:'반별로 영역 점수를 입력하고 저장해요.', phase:1,
     icon:'<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9.5 9.5V19.5"/><path d="M12.5 13.5h4.5M12.5 16.5h4.5"/>' },
-  { key:'compare', title:'데이터 비교', desc:'과목을 듣는 반들의 평균을 숫자와 그래프로 비교해요.', phase:2,
+  { key:'compare', title:'데이터 비교', desc:'반별 평균을 숫자와 그래프로 비교해요.', phase:2,
     icon:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>' },
-  { key:'notice', title:'결시자 수행안내', desc:'결시 학생의 수행 안내장을 A4 한 장에 9칸으로 만들어요.', phase:2,
+  { key:'notice', title:'결시자 수행안내', desc:'결시 학생에게 줄 안내장을 A4로 만들어요.', phase:2,
     icon:'<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 7l8 6 8-6"/>' },
-  { key:'xlsxExport', title:'엑셀 파일 다운로드', desc:'반·번호·성명과 영역별 점수를 담은 파일을 만들어요.', phase:2,
+  { key:'xlsxExport', title:'엑셀 파일 다운로드', desc:'제출용 성적 엑셀 파일을 내려받아요.', phase:2,
     icon:'<path d="M12 3.5v11M8 11l4 4 4-4"/><path d="M4.5 16v2.5A2 2 0 0 0 6.5 20.5h11a2 2 0 0 0 2-2V16"/>' }
 ];
+// 진행: 수행평가마다 반복되는 단계. 나머지는 언제 하는지(when)를 보여준다.
 var HOME_PHASES = [
-  { label:'준비', desc:'과목·학생·영역 설정' },
-  { label:'진행', desc:'출결·점수 입력' },
-  { label:'확인·출력', desc:'비교·안내·제출' }
+  { label:'준비', when:'학기 초에 한 번' },
+  { label:'진행', loop:true },
+  { label:'확인·출력', when:'필요할 때 · 학기 말' }
 ];
+var HOME_SVG = {
+  right: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  down: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
+  loop: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16"/><path d="M20 20v-4h-4"/></svg>'
+};
 
+// 준비 → 진행 → 확인·출력 세 칸을 화살표로 잇고, 칸 안에 단계 카드(번호 1~8 = 각 섹션의 번호)를 위에서 아래로 쌓는다.
 function renderHomeShell(){
+  var no = 0;
   document.getElementById('homePhases').innerHTML = HOME_PHASES.map(function(ph, pi){
-    var items = HOME_SECTIONS.filter(function(s){ return s.phase === pi; });
-    var cards = items.map(function(s){
+    var cards = HOME_SECTIONS.filter(function(s){ return s.phase === pi; }).map(function(s){
+      no++;
       return '<button type="button" class="home-card" data-section="' + s.key + '">' +
-        '<span class="home-card-top">' +
-          '<span class="home-icon"><svg viewBox="0 0 24 24">' + s.icon + '</svg></span>' +
-          '<span class="home-card-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></span>' +
-        '</span>' +
-        '<span class="home-card-title">' + s.title + '</span>' +
+        '<span class="home-card-top"><span class="home-card-no">' + no + '</span><span class="home-card-title">' + s.title + '</span>' +
+          '<svg class="home-card-icon" viewBox="0 0 24 24" aria-hidden="true">' + s.icon + '</svg></span>' +
         '<span class="home-card-desc">' + s.desc + '</span>' +
+        '<span class="home-card-status" id="homeStatus-' + s.key + '"></span>' +
       '</button>';
-    }).join('');
-    return '<div class="home-phase">' +
-      '<div class="home-phase-head"><span class="home-phase-no">' + (pi + 1) + '</span><h3>' + ph.label + '</h3><span class="home-phase-desc">' + ph.desc + '</span></div>' +
-      '<div class="home-grid home-grid-' + items.length + '">' + cards + '</div>' +
-    '</div>';
+    }).join('<span class="home-step-down">' + HOME_SVG.down + '</span>');
+    var when = ph.loop
+      ? '<span class="home-phase-loop">' + HOME_SVG.loop + '수행평가마다 반복</span>'
+      : '<span class="home-phase-when">' + ph.when + '</span>';
+    var loopNote = ph.loop ? '<div class="home-loop-note">' + HOME_SVG.loop + '다음 수행평가도 4 → 5 반복</div>' : '';
+    return (pi ? '<div class="home-flow-arrow">' + HOME_SVG.right + '</div>' : '') +
+      '<div class="home-phase' + (ph.loop ? ' is-loop' : '') + '"><div class="home-phase-head"><h3>' + ph.label + '</h3>' + when + '</div>' + cards + loopNote + '</div>';
   }).join('');
 }
+// 결시자 수행안내는 수행 영역을 "전체 영역"으로 두고 결시자 불러오기까지 눌러 준다.
 document.getElementById('homePhases').addEventListener('click', function(e){
   var btn = e.target.closest('.home-card');
-  if (btn) goToSection(btn.dataset.section);
+  if (!btn) return;
+  goToSection(btn.dataset.section);
+  if (btn.dataset.section === 'notice'){
+    document.getElementById('noticeDomainSelect').value = '';
+    document.getElementById('loadNoticeBtn').click();
+  }
 });
 renderHomeShell();
 
@@ -1652,50 +1651,28 @@ function refreshHomeGreeting(){
     : '<span class="home-subject-empty">아직 설정된 과목이 없어요. "수업 과목 설정"에서 먼저 추가해주세요.</span>';
 }
 
-var HOME_STAT_ICONS = {
-  bell: '<path d="M12 3.75v1.7"/><path d="M6.5 11c0-3.3 1.9-5.55 4.15-5.9a1.4 1.4 0 0 1 2.7 0C15.6 5.45 17.5 7.7 17.5 11v3l1.5 3h-14l1.5-3v-3Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/>',
-  target: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/>'
-};
-var HOME_STAT_GO = '<span class="home-stat-go" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>';
-function homeStatIcon(name){ return '<span class="home-stat-icon"><svg viewBox="0 0 24 24">' + HOME_STAT_ICONS[name] + '</svg></span>'; }
-function renderHomeStatsLoading(){
-  document.getElementById('homeStats').innerHTML =
-    '<div class="home-stat">' + homeStatIcon('bell') + '<div class="home-stat-body"><div class="home-stat-label">결시 대기</div><div class="home-stat-value">…</div></div></div>' +
-    '<div class="home-stat status">' + homeStatIcon('target') + '<div class="home-stat-body"><div class="home-stat-label">영역 상태 관리</div><div class="home-stat-value">…</div></div></div>';
+// 홈 통계를 단계 카드 안에 보여준다: 3 수행 영역 관리 = 지금 "이번 수행"인 영역, 4·7 = 결시 건수, 5 = 점수 입력률
+function setHomeStatus(key, html){ document.getElementById('homeStatus-' + key).innerHTML = html; }
+function clearHomeStatus(){
+  HOME_SECTIONS.forEach(function(s){ setHomeStatus(s.key, ''); });
+  document.querySelector('.home-card[data-section="scores"]').classList.remove('is-now');
 }
-// 영역 상태 관리 카드: 지금 "이번 수행"인 영역 이름을 보여준다. 과목이 여럿이면 "과목 · 영역"으로.
-function homeCurrentDomainsHtml(stats){
+function renderHomeStatus(stats){
   var cur = stats.currentDomains || [];
-  if (cur.length === 0) return '<span class="home-stat-current is-empty">이번 수행 영역이 없어요</span>';
-  var multi = cur.some(function(c){ return c.subject !== cur[0].subject; });
+  var multi = cur.some(function(c){ return c.subject !== cur[0].subject; }); // 과목이 여럿이면 "과목 · 영역"
   var names = cur.map(function(c){ return (multi ? c.subject + ' · ' : '') + c.domain; });
-  return '<span class="home-stat-current"><span class="home-stat-pill">이번 수행</span>' + escapeHtml(names.join(', ')) + '</span>' +
-    (stats.performRate === null ? '' : '<span class="home-stat-sub">점수 입력 ' + stats.performRate + '%</span>');
+  setHomeStatus('domains', cur.length
+    ? '<span class="home-chip is-current"><b>이번 수행</b>' + escapeHtml(names.join(', ')) + '</span>'
+    : '<span class="home-chip is-muted">이번 수행 영역 없음</span>');
+  setHomeStatus('attendance', stats.absentPending > 0 ? '<span class="home-chip is-absent">결시 ' + stats.absentPending + '건</span>' : '');
+  setHomeStatus('notice', stats.absentPending > 0 ? '<span class="home-chip is-absent">결시 ' + stats.absentPending + '건 · 안내장 필요</span>' : '');
+  setHomeStatus('scores', stats.performRate === null ? '' :
+    '<span class="home-progress"><span class="home-progress-bar"><span style="width:' + stats.performRate + '%"></span></span>점수 입력 ' + stats.performRate + '%</span>');
+  document.querySelector('.home-card[data-section="scores"]').classList.toggle('is-now', cur.length > 0);
 }
-function renderHomeStats(stats){
-  document.getElementById('homeStats').innerHTML =
-    '<button type="button" class="home-stat home-stat-link' + (stats.absentPending > 0 ? ' warn' : '') + '" data-go="notice" aria-label="결시 대기 ' + stats.absentPending + '건, 결시자 수행안내에서 보기">' + homeStatIcon('bell') +
-      '<span class="home-stat-body"><span class="home-stat-label">결시 대기</span><span class="home-stat-value">' + stats.absentPending + '<small>건</small></span></span>' +
-      HOME_STAT_GO + '</button>' +
-    '<button type="button" class="home-stat home-stat-link status" data-go="domains">' + homeStatIcon('target') +
-      '<span class="home-stat-body"><span class="home-stat-label">영역 상태 관리</span>' + homeCurrentDomainsHtml(stats) + '</span>' +
-      HOME_STAT_GO + '</button>';
-}
-// "결시 대기"를 누르면 결시자 수행안내로 가서 수행 영역을 "전체 영역"으로 두고 결시자 불러오기까지 눌러 준다.
-// "영역 상태 관리"를 누르면 수행 영역 관리로 간다.
-document.getElementById('homeStats').addEventListener('click', function(e){
-  var link = e.target.closest('.home-stat-link');
-  if (!link) return;
-  if (link.dataset.go === 'domains'){ goToSection('domains'); return; }
-  goToSection('notice');
-  document.getElementById('noticeDomainSelect').value = '';
-  document.getElementById('loadNoticeBtn').click();
-});
 function loadHomeStats(){
-  renderHomeStatsLoading();
-  gs.withSuccessHandler(renderHomeStats).withFailureHandler(function(){
-    document.getElementById('homeStats').innerHTML = '<div class="home-stat"><div class="home-stat-label">통계</div><div class="home-stat-value">-</div></div>';
-  }).getHomeStats(TEACHER_PW);
+  clearHomeStatus();
+  gs.withSuccessHandler(renderHomeStatus).withFailureHandler(clearHomeStatus).getHomeStats(TEACHER_PW);
 }
 function showHome(){
   document.getElementById('homeView').hidden = false;

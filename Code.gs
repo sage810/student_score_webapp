@@ -1057,7 +1057,7 @@ function getAbsentees(password, subject) {
   return { rows: rows, domains: domainNames };
 }
 
-// 홈 화면 상단 통계용: 결시 대기(결시로 표시된 항목 수) / 영역 상태 관리 카드(지금 "이번 수행"인 영역 목록 + 점수 입력률).
+// 홈 화면 흐름 보드의 단계 카드에 보여줄 값: 결시 대기(결시로 표시된 항목 수) / 지금 "이번 수행"인 영역 목록 / 점수 입력률.
 // performRate 는 상태가 "이번 수행"인 영역-학생 조합 중 점수가 입력된 비율이다(빈 칸·결시 제외).
 // 여러 반·영역을 한 번에 훑어야 해서 화면에서 여러 번 나눠 부르는 대신 여기서 한 번에 계산해 돌려준다.
 function getHomeStats(password) {
