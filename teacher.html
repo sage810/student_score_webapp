@@ -384,6 +384,8 @@
   .domain-row-labels .lbl-name{ flex:1 1 0; }
   .domain-row-labels .lbl-max{ width:76px; flex-shrink:0; }
   .domain-row-labels .lbl-group{ flex:1 1 0; }
+  /* 영역 상태: 영역명 왼쪽. 학년 단위로 정하고 그 학년의 모든 반에 똑같이 저장된다 */
+  .domain-row .domain-status-select, .domain-row-labels .lbl-status{ width:120px; flex-shrink:0; }
     .domain-del, .subject-del, .roster-del{
     width:44px; height:44px; flex-shrink:0; border-radius:9px; border:1.5px solid var(--border);
     background:#fff; color:var(--ink-soft); cursor:pointer; font-size:15px; line-height:1;
@@ -479,12 +481,6 @@
     html, body{ background:#fff !important; margin:0; padding:0; }
     body > *:not(#noticePrintArea){ display:none !important; }
     #noticePrintArea{ display:block !important; }
-  }
-  /* 표 머리글의 영역별 상태 드롭다운 */
-  thead .status-head-row th{ background:#fff; padding:8px 4px; }
-  thead .status-head-label{ font-size:12px; color:var(--ink-soft); }
-  thead .status-head-cell .status-select{
-    width:100%; padding:4px 2px; font-size:12px; border-radius:8px; text-align:center; text-align-last:center;
   }
   .attend-stats:empty{ display:none; }
   .attend-stats{ margin-top:16px; border:1px solid var(--border); border-radius:12px; overflow:hidden; }
@@ -862,6 +858,7 @@
       </div>
       <p class="mismatch-badge" id="totalMismatchBadge" hidden></p>
       <div class="domain-row-labels">
+        <span class="lbl-status">영역 상태</span>
         <span class="lbl-group">영역명</span>
         <span class="lbl-name">하위 영역명</span>
         <span class="lbl-max">배점</span>
@@ -1198,6 +1195,17 @@ function createMockRun(){
     s.domains.forEach(function(d){ out[d.name] = saved[d.name] || '예정'; });
     return out;
   }
+  // 학년별로 모은 상태, 반들 상태가 다르면 "" (Code.gs 의 gradeStatusesFor_ 와 같은 규칙)
+  function gradeStatusesOf(s){
+    var byGrade = {};
+    (s.classPairs||[]).forEach(function(p){
+      var st = classStatusesOf(s, p.grade, p.cls);
+      var g = String(p.grade);
+      if (!byGrade[g]){ byGrade[g] = st; return; }
+      s.domains.forEach(function(d){ if (byGrade[g][d.name] !== st[d.name]) byGrade[g][d.name] = ''; });
+    });
+    return byGrade;
+  }
   // 명단은 학급(학년-반) 단위. 점수 저장소(state.roster)에는 과목별 점수만 남는다.
   state.classRoster = {};
   Object.keys(state.roster).forEach(function(subj){
@@ -1228,7 +1236,7 @@ function createMockRun(){
       return {
         year:state.year, semester:state.semester,
         classCounts: state.classCounts,
-        subjects: state.subjects.map(function(s){ return { id:s.id, name:s.name, declaredTotal:s.declaredTotal, classPairs:(s.classPairs||[]).slice(), domains:s.domains.slice() }; }),
+        subjects: state.subjects.map(function(s){ return { id:s.id, name:s.name, declaredTotal:s.declaredTotal, classPairs:(s.classPairs||[]).slice(), domains:s.domains.slice(), gradeStatuses:gradeStatusesOf(s) }; }),
         sheetUrl: state.sheetUrl
       };
     }); },
@@ -1253,6 +1261,17 @@ function createMockRun(){
       check(pw);
       var s = findSubjectById(subjectId);
       if (s) s.domains = domains.map(function(d){ return { name:d.name, max:d.max, group:d.group }; });
+      return {ok:true};
+    }); },
+    saveGradeStatuses: function(pw,subjectId,grade,statuses){ run(function(){
+      check(pw);
+      var s = findSubjectById(subjectId);
+      if (!s) return {ok:true};
+      state.statuses[s.id] = state.statuses[s.id] || {};
+      (s.classPairs||[]).filter(function(p){ return String(p.grade) === String(grade); }).forEach(function(p){
+        var key = p.grade+'-'+p.cls;
+        state.statuses[s.id][key] = Object.assign({}, state.statuses[s.id][key] || {}, statuses || {});
+      });
       return {ok:true};
     }); },
     getClassScores: function(pw,subject,g,c){ run(function(){
@@ -2314,8 +2333,9 @@ function onDomainSubjectChange(){
 }
 function refreshDomainPanel(){
   var subj = resolveDomainInstance();
+  var grade = document.getElementById('domainGradeSelect').value;
   document.getElementById('subjectTotalInput').value = subj && subj.declaredTotal ? subj.declaredTotal : '';
-  renderDomainList(subj ? subj.domains : []);
+  renderDomainList(subj ? subj.domains : [], (subj && subj.gradeStatuses && subj.gradeStatuses[grade]) || {});
 }
 
 // 배점 합계 ≠ 과목 총점 경고는 평소에는 숨기고, 저장 버튼을 누를 때만 계산해서 보여준다.
@@ -2337,7 +2357,8 @@ function updateMismatchBadge(){
   }
 }
 
-function renderDomainList(domains){
+// statuses: 고른 학년의 영역별 상태 { 영역명: 상태 }. 그 학년 반들의 상태가 서로 다르면 "" (반마다 다름)
+function renderDomainList(domains, statuses){
   clearDirty('domains');
   lastSavedDomains = domains.map(function(d){ return d.name; });
   var list = document.getElementById('domainList');
@@ -2345,7 +2366,7 @@ function renderDomainList(domains){
   if (domains.length === 0){
     addDomainRow({name:'', max:'', group:''});
   } else {
-    domains.forEach(function(d){ addDomainRow(d); });
+    domains.forEach(function(d){ addDomainRow(d, (statuses || {})[d.name]); });
   }
   if (mismatchPendingAfterSave){
     mismatchPendingAfterSave = false;
@@ -2354,14 +2375,21 @@ function renderDomainList(domains){
     hideMismatchBadge();
   }
 }
-function addDomainRow(d){
+function addDomainRow(d, status){
   d = d || {name:'', max:'', group:''};
   var displayGroup = d.group || d.name || '';
   var displaySub = d.group ? (d.name || '') : '';
+  // 새로 추가한 영역은 "예정". "반마다 다름"은 그대로 두면 저장해도 반마다 원래 상태가 유지된다.
+  var mixed = status === '';
+  var cur = mixed ? '' : (status || '예정');
   var list = document.getElementById('domainList');
   var row = document.createElement('div');
   row.className = 'domain-row';
   row.innerHTML =
+    '<select class="domain-status-select" aria-label="영역 상태" data-status="' + cur + '">' +
+      (mixed ? '<option value="" selected>반마다 다름</option>' : '') +
+      DOMAIN_STATUSES.map(function(s){ return '<option value="' + s + '"' + (s === cur ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
+    '</select>' +
     '<textarea class="domain-group-input" rows="1" aria-label="영역명" placeholder="예: 청소년의 건강한 식생활 제안하기">' + escapeHtml(displayGroup) + '</textarea>' +
     '<textarea class="domain-name-input" rows="1" aria-label="하위 영역명" placeholder="없으면 비워두기">' + escapeHtml(displaySub) + '</textarea>' +
     '<input type="number" class="domain-max-input" aria-label="배점" min="0" value="' + (d.max === '' || d.max === undefined ? '' : d.max) + '" placeholder="점수" />' +
@@ -2414,17 +2442,21 @@ document.getElementById('saveDomainsBtn').addEventListener('click', function(){
   if (!targetInstance){ showToast('해당 과목·학년을 찾을 수 없어요.', true); return; }
 
   var rows = document.querySelectorAll('#domainList .domain-row');
+  var statuses = {}; // "반마다 다름"(빈 값)으로 둔 영역은 넣지 않아서 반마다 원래 상태가 유지된다
   var domains = Array.from(rows).map(function(row){
     var groupVal = row.querySelector('.domain-group-input').value.trim();
     var subVal = row.querySelector('.domain-name-input').value.trim();
     var name = subVal || groupVal;
     var group = subVal ? groupVal : '';
+    var status = row.querySelector('.domain-status-select').value;
+    if (name && status) statuses[name] = status;
     return {
       name: name,
       max: Number(row.querySelector('.domain-max-input').value) || 0,
       group: group
     };
   }).filter(function(d){ return d.name; });
+  var grade = document.getElementById('domainGradeSelect').value;
 
   if (domains.length === 0){ showToast('영역을 하나 이상 입력해주세요.', true); return; }
   var newNames = domains.map(function(d){ return d.name; });
@@ -2449,15 +2481,22 @@ document.getElementById('saveDomainsBtn').addEventListener('click', function(){
 
   setBtnLoading(btn, true);
   gs.withSuccessHandler(function(){
+    // 영역 상태는 이 학년의 모든 반에 같은 값으로 저장한다
     gs.withSuccessHandler(function(){
-      setBtnLoading(btn, false, '저장');
-      showToast('수행 영역이 저장됐어요.');
-      clearDirty('domains');
-      loadDashboard();
+      applyGradeStatusesToAttendance(targetInstance.name, grade, statuses);
+      gs.withSuccessHandler(function(){
+        setBtnLoading(btn, false, '저장');
+        showToast('수행 영역이 저장됐어요.');
+        clearDirty('domains');
+        loadDashboard();
+      }).withFailureHandler(function(){
+        setBtnLoading(btn, false, '저장');
+        showToast('영역은 저장됐지만 "총점" 저장에는 실패했어요.', true);
+      }).saveSubjects(TEACHER_PW, subjectsPayload);
     }).withFailureHandler(function(){
       setBtnLoading(btn, false, '저장');
-      showToast('영역은 저장됐지만 "총점" 저장에는 실패했어요.', true);
-    }).saveSubjects(TEACHER_PW, subjectsPayload);
+      showToast('영역은 저장됐지만 "영역 상태" 저장에는 실패했어요.', true);
+    }).saveGradeStatuses(TEACHER_PW, targetInstance.id, grade, statuses);
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '저장');
     showToast('저장에 실패했어요. 다시 시도해주세요.', true);
@@ -2537,7 +2576,7 @@ document.getElementById('loadAttendanceBtn').addEventListener('click', function(
 
 function renderAttendanceTable(res, subject, g, c){
   clearDirty('attendance');
-  // 영역 상태(완료/이번 수행/예정)는 수행 영역 관리에서 정한 그 반의 값을 그대로 쓴다.
+  // 영역 상태(완료/이번 수행/예정)는 수행 영역 관리에서 정한 그 반의 값을 받아 통계·메모 필터에만 쓴다(여기서 바꾸지 않음).
   currentAttendanceCtx = { subject:subject, grade:g, class:c, domains:res.domains, statuses:res.statuses || {} };
   renderDomainMemos(res.domains, res.memos || {});
   var table = document.getElementById('attendanceTable');
@@ -2547,7 +2586,7 @@ function renderAttendanceTable(res, subject, g, c){
 
   var head = document.getElementById('attendanceTableHead');
   var body = document.getElementById('attendanceTableBody');
-  head.innerHTML = buildAttendanceHeader(res.domains) + buildStatusHeaderRow(res.domains, currentAttendanceCtx.statuses);
+  head.innerHTML = buildAttendanceHeader(res.domains);
 
   if (res.students.length === 0){
     body.innerHTML = '<tr><td colspan="' + (res.domains.length+2) + '"><div class="empty-state">이 과목의 이 학년·반에 등록된 학생이 없어요. "학생 명단 관리"에서 학생을 추가해주세요.</div></td></tr>';
@@ -2585,7 +2624,14 @@ document.addEventListener('change', function(e){
   if (e.target.matches && e.target.matches('select[data-status]')) e.target.dataset.status = e.target.value;
 });
 
-// 응시·결시 관리에서 저장한 그 반의 상태를 화면이 들고 있는 설정(currentConfig)에도 반영해서 수행 영역 관리와 맞춘다.
+// 수행 영역 관리에서 학년 단위로 상태를 저장하면, 응시·결시 관리에 불러와 둔 같은 과목·학년의 반에도 바로 반영해서 통계·메모 필터를 맞춘다.
+function applyGradeStatusesToAttendance(subject, grade, statuses){
+  if (!currentAttendanceCtx || currentAttendanceCtx.subject !== subject || String(currentAttendanceCtx.grade) !== String(grade)) return;
+  Object.keys(statuses).forEach(function(name){ currentAttendanceCtx.statuses[name] = statuses[name]; });
+  updateAttendanceStats();
+  applyMemoFilter();
+}
+
 // 응시·결시 관리와 반별 점수 입력 표가 함께 쓰는 머리글: 번호·이름, 그리고 상위 그룹이 없는(=하위 영역이 없는) 영역은 윗 행과 합쳐서(rowspan) 한 칸으로 보여준다.
 function buildAttendanceHeader(domains, withTotal){
   var hasGroup = domains.some(function(d){ return d.group; });
@@ -2666,26 +2712,6 @@ document.getElementById('attendanceDomainMemos').addEventListener('input', funct
     autosizeMemo(e.target);
     markDirty('attendance');
   }
-});
-
-// 영역별 상태(완료 / 이번 수행 / 예정)는 표 머리글의 각 영역 아래에서 고른다. 반마다 따로 저장된다.
-function buildStatusHeaderRow(domains, statuses){
-  statuses = statuses || {};
-  return '<tr class="status-head-row"><th colspan="2" class="status-head-label">영역 상태</th>' +
-    domains.map(function(d){
-      var cur = statuses[d.name] || '예정';
-      return '<th class="status-head-cell"><select class="status-select" data-status="' + cur + '" data-domain="' + escapeHtml(d.name) +
-        '" aria-label="' + escapeHtml(d.name) + ' 상태">' +
-        DOMAIN_STATUSES.map(function(s){ return '<option value="' + s + '"' + (s === cur ? ' selected' : '') + '>' + s + '</option>'; }).join('') +
-        '</select></th>';
-    }).join('') + '</tr>';
-}
-document.getElementById('attendanceTableHead').addEventListener('change', function(e){
-  if (!e.target.classList.contains('status-select') || !currentAttendanceCtx) return;
-  currentAttendanceCtx.statuses[e.target.dataset.domain] = e.target.value;
-  updateAttendanceStats();
-  applyMemoFilter();
-  markDirty('attendance');
 });
 
 function updateAttendanceStats(){
@@ -2779,7 +2805,7 @@ document.getElementById('saveAttendanceBtn').addEventListener('click', function(
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '저장');
     showToast('저장에 실패했어요. 다시 시도해주세요.', true);
-  }).saveAttendanceForClass(TEACHER_PW, currentAttendanceCtx.subject, currentAttendanceCtx.grade, currentAttendanceCtx.class, students, memos, currentAttendanceCtx.statuses);
+  }).saveAttendanceForClass(TEACHER_PW, currentAttendanceCtx.subject, currentAttendanceCtx.grade, currentAttendanceCtx.class, students, memos, null);
 });
 
 /* ---- 5. 반별 점수 입력 표 ---- */

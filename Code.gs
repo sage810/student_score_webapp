@@ -12,7 +12,7 @@
  *   과목  : 과목명 | 총점 | 학년반목록 | ID  (2행부터, 최대 5개 과목. "총점"은 영역 배점 합과 별개로 선언하는 만점 — 100점이 아닐 수도 있음.
  *          "학년반목록"은 이 과목을 듣는 학년-반 조합을 "학년-반" 형식으로 세미콜론(;)으로 이어붙인 문자열. 예: "1-1;1-2;2-3"
  *          "ID"는 화면에 안 보이는 내부 식별자 — 같은 이름의 과목을 학년별로 여러 개 만들어도(예: "기술·가정"을 1학년용/2학년용 각각) 영역이 안 섞이게 해줌)
- *   진행상태 : 과목ID | 학년 | 반 | 영역명 | 상태 | 메모  — 영역별 "메모"는 응시·결시 관리의 "영역별 메모". 반마다 다른 진도를 관리. 상태 = "완료" / "이번 수행" / "예정". 응시·결시 관리에서 영역별로 정하고, 학생 조회 화면의 "이번 수행"도 여기의 "이번 수행"을 따름. 그 반에 기록이 없는 영역은 "예정"
+ *   진행상태 : 과목ID | 학년 | 반 | 영역명 | 상태 | 메모  — 영역별 "메모"는 응시·결시 관리의 "영역별 메모". 행은 반마다 있음. 상태 = "완료" / "이번 수행" / "예정". 수행 영역 관리에서 학년 단위로 정하면 그 학년의 모든 반 행에 같은 값으로 저장되고, 학생 조회 화면의 "이번 수행"도 여기의 "이번 수행"을 따름. 그 반에 기록이 없는 영역은 "예정"
  *   영역  : 과목ID | 영역명 | 배점 | 그룹  (그룹이 같으면 화면에서 한 묶음으로 표시. "과목명"이 아니라 "과목ID" 기준이라 이름이 같은 과목끼리도 안 섞임)
  *   명단  : 학년 | 반 | 번호 | 이름  — 학급별 학생 (과목 열 없음). 수업 과목 설정에서 그 학년·반을 추가한 과목의 응시·결시 관리, 반별 점수 입력 표, 결시자 수행안내에 자동 연결됨 (교사 화면의 "학생 명단 관리"에서도 편집 가능)
  *   점수_과목명 : 과목명 | 학년 | 반 | 번호 | 이름 | <영역1> | <영역2> | ... | 합계  ("합계"는 맨 오른쪽 열, 영역 점수의 SUM 수식 — 결시·빈 칸은 합에서 빠짐. 영역이 추가되어도 합계 열 앞에 끼워져 항상 맨 오른쪽에 있음. 영역 이름을 "합계"로 짓지 말 것)  (과목명이 다르면 시트도 다름 — 예: "점수_기술·가정". 없으면 처음 저장할 때 자동으로 만들어지고, 예전 통합 "점수" 시트에 그 과목 기록이 있으면 자동으로 옮겨 옴. 시트 이름에 못 쓰는 글자 : \ / ? * [ ] 는 _ 로 바뀜. 빈 칸 = 미실시, "결시" = 응시·결시 관리에서 결시로 표시한 항목 — 총점 계산은 미실시와 동일하게 취급. 예전에 저장된 "결시:날짜" 형식도 결시로 인식하며, 저장하면 "결시"로 정리됨)
@@ -382,6 +382,21 @@ function classStatusesFor_(allStatuses, instance, grade, cls, domains) {
   return result;
 }
 
+// 수행 영역 관리용: 학년별로 영역 상태를 하나로 모은다 { 학년: { 영역명: 상태 } }.
+// 그 학년 반들의 상태가 서로 다르면 "" (반마다 다름)으로 둔다.
+function gradeStatusesFor_(allStatuses, instance, domains) {
+  var byGrade = {};
+  instance.classPairs.forEach(function (p) {
+    var st = classStatusesFor_(allStatuses, instance, p.grade, p.cls, domains);
+    var g = String(p.grade);
+    if (!byGrade[g]) { byGrade[g] = st; return; }
+    domains.forEach(function (d) {
+      if (byGrade[g][d.name] !== st[d.name]) byGrade[g][d.name] = '';
+    });
+  });
+  return byGrade;
+}
+
 var PROGRESS_HEADER = ['과목ID', '학년', '반', '영역명', '상태', '메모'];
 
 // 그 반의 영역별 메모를 { 영역명: 메모 } 로 읽는다.
@@ -399,13 +414,21 @@ function readClassMemos_(ss, subjectId, grade, cls) {
 }
 
 // 이 반(과목ID+학년+반)의 영역별 상태·메모 행을 통째로 새 값으로 바꾼다. 다른 반의 행은 그대로 둔다.
+// statuses 를 넘기지 않으면(null) 그 반에 저장돼 있던 상태를 그대로 둔다 — 상태는 수행 영역 관리에서 학년 단위로 정한다.
 function saveClassProgress_(ss, subjectId, grade, cls, statuses, memos) {
   if (!subjectId || !grade || !cls) return;
-  statuses = statuses || {};
   memos = memos || {};
   var sheet = ss.getSheetByName('진행상태');
   var lastRow = sheet.getLastRow();
   var data = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 6).getValues() : [];
+  if (!statuses) {
+    statuses = {};
+    data.forEach(function (r) {
+      if (r[0] === subjectId && String(r[1]) === String(grade) && String(r[2]) === String(cls) && r[3] && DOMAIN_STATUSES.indexOf(String(r[4])) !== -1) {
+        statuses[String(r[3])] = String(r[4]);
+      }
+    });
+  }
   var others = data.filter(function (r) {
     return !(r[0] === subjectId && String(r[1]) === String(grade) && String(r[2]) === String(cls));
   });
@@ -564,10 +587,13 @@ function getTeacherConfig(password) {
   var ss = ensureSheets_();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
   var cfg = getCfgMap_(ss);
+  var allStatuses = readAllStatuses_(ss);
   var subjects = getSubjects_(ss).map(function (s) {
+    var domains = getDomainsForSubject_(ss, s.id);
     return {
       id: s.id, name: s.name, declaredTotal: s.declaredTotal,
-      classPairs: s.classPairs, domains: getDomainsForSubject_(ss, s.id)
+      classPairs: s.classPairs, domains: domains,
+      gradeStatuses: gradeStatusesFor_(allStatuses, s, domains)
     };
   });
   return {
@@ -626,7 +652,7 @@ function saveSubjects(password, subjects) {
   }
 }
 
-// 영역 정의(이름·배점·그룹)만 저장한다. 영역별 상태(완료/이번 수행/예정)는 응시·결시 관리에서 반별로 저장한다.
+// 영역 정의(이름·배점·그룹)만 저장한다. 영역별 상태(완료/이번 수행/예정)는 saveGradeStatuses 로 따로 저장한다.
 function saveDomains(password, subjectId, domains) {
   var ss = ensureSheets_();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
@@ -667,6 +693,53 @@ function saveDomains(password, subjectId, domains) {
       }
       refreshTotalColumn_(scoreSheet);
     }
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// 수행 영역 관리에서 정한 영역별 상태를 그 과목·학년의 모든 반에 똑같이 저장한다 ("진행상태" 시트는 반별 행 구조 그대로).
+// statuses: { 영역명: "완료" | "이번 수행" | "예정" } — 여기에 없는 영역("반마다 다름"으로 둔 영역)은 반마다 원래 상태를 그대로 두고, 메모도 그대로 둔다.
+function saveGradeStatuses(password, subjectId, grade, statuses) {
+  var ss = ensureSheets_();
+  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    statuses = statuses || {};
+    var owner = getSubjects_(ss).filter(function (s) { return s.id === subjectId; })[0];
+    if (!owner) return { ok: true };
+    var classes = owner.classPairs
+      .filter(function (p) { return String(p.grade) === String(grade); })
+      .map(function (p) { return String(p.cls); });
+
+    var sheet = ss.getSheetByName('진행상태');
+    var lastRow = sheet.getLastRow();
+    var data = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 6).getValues() : [];
+    var inGrade = function (r) {
+      return r[0] === subjectId && String(r[1]) === String(grade) && classes.indexOf(String(r[2])) !== -1;
+    };
+    var newRows = [];
+    classes.forEach(function (cls) {
+      var existing = {}; // 영역명 -> { status, memo }
+      data.forEach(function (r) {
+        if (inGrade(r) && String(r[2]) === cls && r[3]) existing[String(r[3])] = { status: String(r[4]), memo: String(r[5] || '') };
+      });
+      var names = Object.keys(existing);
+      Object.keys(statuses).forEach(function (n) { if (names.indexOf(n) === -1) names.push(n); });
+      names.forEach(function (name) {
+        var old = existing[name] || { status: '', memo: '' };
+        var status = DOMAIN_STATUSES.indexOf(statuses[name]) !== -1 ? statuses[name]
+          : (DOMAIN_STATUSES.indexOf(old.status) !== -1 ? old.status : '예정');
+        newRows.push([subjectId, grade, cls, name, status, old.memo]);
+      });
+    });
+
+    var all = data.filter(function (r) { return !inGrade(r); }).concat(newRows);
+    sheet.clear();
+    sheet.getRange(1, 1, 1, 6).setValues([PROGRESS_HEADER]);
+    if (all.length) sheet.getRange(2, 1, all.length, 6).setValues(all);
     return { ok: true };
   } finally {
     lock.releaseLock();
@@ -895,8 +968,8 @@ function getAttendanceForClass(password, subject, grade, cls) {
   return { domains: domains, students: students, memos: memos, statuses: statuses };
 }
 
-// memos: 그 반의 영역별 메모 { 영역명: 글 }, statuses: 그 반의 영역별 상태 { 영역명: "완료" | "이번 수행" | "예정" }
-// — 둘 다 응시·결시 관리에서 정한 값이고, "진행상태" 시트의 상태·메모 열에 함께 저장된다.
+// memos: 그 반의 영역별 메모 { 영역명: 글 } — "진행상태" 시트의 메모 열에 저장된다.
+// statuses: 넘기지 않으면(null) 그 반의 상태를 그대로 둔다. 영역 상태는 수행 영역 관리에서 학년 단위로 정한다(saveGradeStatuses).
 function saveAttendanceForClass(password, subject, grade, cls, students, memos, statuses) {
   var ss = ensureSheets_();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
