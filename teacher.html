@@ -359,6 +359,22 @@
   .class-add-btn:hover{ background: rgba(133,91,251,0.2); }
   .class-add-btn[hidden]{ display:none; }
 
+  /* 이 과목을 수강하는 학생 추가하기: 학번 또는 이름으로 검색해서 한 명씩 추가 */
+  .student-enroll{ margin-top:12px; }
+  .student-chip-row:empty{ margin-bottom:0; }
+  .student-picker[hidden]{ display:none; }
+  .student-picker{ margin-top:8px; }
+  .student-results{ list-style:none; margin:8px 0 0; padding:0; display:flex; flex-direction:column; gap:4px; max-height:240px; overflow-y:auto; }
+  .student-results li{
+    display:flex; align-items:center; gap:8px; min-height:44px; padding:0 0 0 12px;
+    border-radius:10px; background: var(--bg); font-size:13px;
+  }
+  .student-result-id{ font-weight:700; color: var(--purple-dark); font-variant-numeric: tabular-nums; }
+  .student-result-name{ font-weight:700; color: var(--ink); }
+  .student-result-meta{ flex:1; font-size:12px; color: var(--ink-soft); }
+  .student-results .class-add-btn:disabled{ background:none; color: var(--ink-soft); cursor:default; }
+  .student-results-hint{ font-size:12px; color: var(--ink-soft); margin:8px 0 0; }
+
   /* 수행 영역 관리 */
   .mismatch-badge{
     display:flex; align-items:center; gap:8px;
@@ -1154,7 +1170,7 @@ function createMockRun(){
     classCounts: { 1:4, 2:4, 3:4 },
     subjects:[
       { id:'demo-subject-1', name:'기술·가정', declaredTotal:100,
-        classPairs:[{grade:'1',cls:'1'},{grade:'1',cls:'2'}], domains:[
+        classPairs:[{grade:'1',cls:'1'},{grade:'1',cls:'2'}], students:[], domains:[
         {name:'청소년의 건강한 식생활 제안하기', max:20, group:'', status:'완료'},
         {name:'나에게 어울리는 옷 디자인하기', max:16, group:'의복 디자인하기', status:'완료'},
         {name:'에코 수세미 제작하기', max:14, group:'의복 디자인하기', status:'이번 수행'},
@@ -1164,7 +1180,7 @@ function createMockRun(){
       ]},
       // "수업 과목 설정 → 과목 추가"로 넣은 두 번째 과목 (과목이 여러 개일 때 화면 확인용)
       { id:'demo-subject-2', name:'정보', declaredTotal:100,
-        classPairs:[{grade:'1',cls:'1'},{grade:'1',cls:'2'}], domains:[
+        classPairs:[{grade:'1',cls:'1'},{grade:'1',cls:'2'}], students:[], domains:[
         {name:'정보 윤리 캠페인 포스터 만들기', max:15, group:'', status:'완료'},
         {name:'알고리즘 순서도 그리기', max:20, group:'', status:'이번 수행'},
         {name:'조건문 프로그램 만들기', max:25, group:'파이썬 프로그래밍 프로젝트', status:'예정'},
@@ -1208,9 +1224,15 @@ function createMockRun(){
     var candidates = state.subjects.filter(function(s){ return s.name === name; });
     if (candidates.length <= 1) return candidates[0] || null;
     var matched = candidates.filter(function(s){
-      return (s.classPairs||[]).some(function(p){ return String(p.grade)===String(grade) && String(p.cls)===String(cls); });
+      return subjectClasses(s).some(function(p){ return String(p.grade)===String(grade) && String(p.cls)===String(cls); });
     });
     return matched[0] || candidates[0];
+  }
+  // 반 전체가 들으면 모두, 아니면 개별수강생으로 추가한 학생만 (Code.gs isEnrolled_ 와 같음)
+  function isEnrolled(s, grade, cls, number){
+    function same(p){ return String(p.grade)===String(grade) && String(p.cls)===String(cls); }
+    if ((s.classPairs||[]).some(same)) return true;
+    return (s.students||[]).some(function(p){ return same(p) && String(p.number)===String(number); });
   }
   // 영역 상태는 영역마다 하나 (Code.gs 처럼 "영역" 시트의 상태 열). 그 과목을 듣는 모든 반이 같은 상태를 쓴다.
   function domainStatusesOf(s){
@@ -1230,9 +1252,17 @@ function createMockRun(){
       });
     });
   });
-  function studentsFor(subject, key){
+  // 아직 어느 과목에도 연결 안 된 학급 (수업 과목 설정의 "학생 추가하기" 검색 확인용)
+  state.classRoster['2-1'] = [
+    {number:'1', name:'강서준'}, {number:'2', name:'윤지아'}, {number:'3', name:'임하준'}, {number:'4', name:'김서윤'}
+  ];
+  // inst 를 주면 그 과목을 듣는 학생만 (개별수강생 학급에서는 추가한 학생만)
+  function studentsFor(subject, key, inst){
     var store = (state.roster[subject] || {})[key] || [];
-    return (state.classRoster[key] || []).map(function(st){
+    var gc = key.split('-');
+    return (state.classRoster[key] || []).filter(function(st){
+      return !inst || isEnrolled(inst, gc[0], gc[1], st.number);
+    }).map(function(st){
       var found = store.filter(function(e){ return String(e.number) === String(st.number); })[0];
       return { number: st.number, name: st.name, scores: found ? found.scores : {} };
     });
@@ -1248,7 +1278,7 @@ function createMockRun(){
       return {
         year:state.year, semester:state.semester,
         classCounts: state.classCounts,
-        subjects: state.subjects.map(function(s){ return { id:s.id, name:s.name, declaredTotal:s.declaredTotal, classPairs:(s.classPairs||[]).slice(), domains:s.domains.map(function(d){ return Object.assign({ status:'예정' }, d); }) }; }),
+        subjects: state.subjects.map(function(s){ return { id:s.id, name:s.name, declaredTotal:s.declaredTotal, classPairs:(s.classPairs||[]).slice(), students:(s.students||[]).slice(), domains:s.domains.map(function(d){ return Object.assign({ status:'예정' }, d); }) }; }),
         sheetUrl: state.sheetUrl
       };
     }); },
@@ -1264,7 +1294,7 @@ function createMockRun(){
         return {
           id: String(s.id || '').trim() || ('mock-' + Date.now() + '-' + Math.random().toString(36).slice(2,8)),
           name:s.name, declaredTotal:Number(s.declaredTotal)||0,
-          classPairs: s.classPairs || (old ? old.classPairs : []), domains: old ? old.domains : []
+          classPairs: s.classPairs || (old ? old.classPairs : []), students: s.students || [], domains: old ? old.domains : []
         };
       });
       return {ok:true};
@@ -1281,13 +1311,13 @@ function createMockRun(){
       check(pw);
       var s = resolveSubjectInstance(subject, g, c);
       var key = g+'-'+c;
-      return { domains: s ? s.domains.slice() : [], students: studentsFor(subject, key) };
+      return { domains: s ? s.domains.slice() : [], students: studentsFor(subject, key, s) };
     }); },
     getSubjectAverages: function(pw,subject){ run(function(){
       check(pw);
       var seen = {}, pairs = [];
       state.subjects.filter(function(s){ return s.name === subject; }).forEach(function(s){
-        (s.classPairs||[]).forEach(function(p){
+        subjectClasses(s).forEach(function(p){
           if (!seen[p.grade+'-'+p.cls]){ seen[p.grade+'-'+p.cls] = true; pairs.push(p); }
         });
       });
@@ -1295,7 +1325,7 @@ function createMockRun(){
       return { classes: pairs.map(function(p){
         var s = resolveSubjectInstance(subject, p.grade, p.cls);
         var domains = s ? s.domains : [];
-        var students = studentsFor(subject, p.grade+'-'+p.cls);
+        var students = studentsFor(subject, p.grade+'-'+p.cls, s);
         var totals = [];
         var stats = domains.map(function(d){ return { name:d.name, max:d.max, sum:0, n:0 }; });
         students.forEach(function(stu){
@@ -1338,12 +1368,22 @@ function createMockRun(){
       state.classRoster[g+'-'+c] = students.map(function(s){ return { number:s.number, name:s.name }; });
       return {ok:true};
     }); },
+    getRosterAll: function(pw){ run(function(){
+      check(pw);
+      var list = [];
+      Object.keys(state.classRoster).forEach(function(key){
+        var gc = key.split('-');
+        state.classRoster[key].forEach(function(s){ list.push({ grade:gc[0], cls:gc[1], number:String(s.number), name:s.name }); });
+      });
+      list.sort(function(a,b){ return (Number(a.grade)-Number(b.grade)) || (Number(a.cls)-Number(b.cls)) || (Number(a.number)-Number(b.number)); });
+      return { students: list };
+    }); },
     getAttendanceForClass: function(pw,subject,g,c){ run(function(){
       check(pw);
       var s = resolveSubjectInstance(subject, g, c);
       var domains = s ? s.domains.slice() : [];
       var key = g+'-'+c;
-      var list = studentsFor(subject, key);
+      var list = studentsFor(subject, key, s);
       var students = list.map(function(stu){
         var absent = {}, hasScore = {};
         domains.forEach(function(d){
@@ -1413,13 +1453,13 @@ function createMockRun(){
         var absentPending = 0, performTotal = 0, performDone = 0, currentDomains = [];
         var seen = {};
         state.subjects.filter(function(s){ return s.name === name; }).forEach(function(s){
-          (s.classPairs||[]).forEach(function(p){
+          subjectClasses(s).forEach(function(p){
             var key = p.grade+'-'+p.cls;
             if (seen[key]) return;
             seen[key] = true;
             var inst = resolveSubjectInstance(name, p.grade, p.cls);
             if (!inst) return;
-            var students = studentsFor(name, key);
+            var students = studentsFor(name, key, inst);
             var statuses = domainStatusesOf(inst);
             inst.domains.forEach(function(d){
               var isCurrent = statuses[d.name] === '이번 수행';
@@ -1471,6 +1511,17 @@ function escapeHtml(str){
 function studentId(grade, cls, number){
   function pad2(n){ n = String(n); return n.length < 2 ? '0' + n : n; }
   return String(grade) + pad2(cls) + pad2(number);
+}
+// 이 과목이 나오는 학급: 반 전체가 듣는 학급(classPairs) + 개별수강생(students)이 속한 학급 (Code.gs subjectClasses_ 와 같음)
+function subjectClasses(s){
+  var seen = {}, list = [];
+  (s.classPairs || []).concat(s.students || []).forEach(function(p){
+    var key = p.grade + '-' + p.cls;
+    if (seen[key]) return;
+    seen[key] = true;
+    list.push({ grade: p.grade, cls: p.cls });
+  });
+  return list;
 }
 function showToast(msg, isError){
   var t = document.getElementById('toast');
@@ -1546,7 +1597,7 @@ var SUBJECT_NAME_PRESETS = ['국어','수학','영어','사회','과학','역사
 var SUBJECT_NAME_OTHER = '__other__';
 var ABSENT_MARKER = '결시';
 var TEACHER_PW = '';
-var currentConfig = null;      // { year, semester, subjects:[{id,name,declaredTotal,classPairs,domains}], sheetUrl }
+var currentConfig = null;      // { year, semester, subjects:[{id,name,declaredTotal,classPairs,students,domains}], sheetUrl }
 var lastSavedSubjects = []; // [{id, name}]
 var lastSavedDomains = [];
 var lastSavedRosterNumbers = [];
@@ -1965,6 +2016,7 @@ document.getElementById('saveRosterBtn').addEventListener('click', function(){
     document.getElementById('rosterSavedHint').textContent = '마지막 저장: 방금 전';
     lastSavedRosterNumbers = newNumbers;
     clearDirty('roster');
+    rosterAll = null; // 수업 과목 설정의 학생 검색이 바뀐 명단을 다시 불러오게
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '저장');
     showToast('저장에 실패했어요. 다시 시도해주세요.', true);
@@ -2018,9 +2070,58 @@ function renderSubjectList(subjects){
   lastSavedSubjects = subjects.map(function(s){ return { id: s.id, name: s.name }; });
   var list = document.getElementById('subjectList');
   list.innerHTML = '';
-  subjects.forEach(function(s){ addSubjectItem(s.name, s.classPairs || [], s.id); });
+  subjects.forEach(function(s){ addSubjectItem(s.name, s.classPairs || [], s.id, s.students || []); });
   if (subjects.length === 0) addSubjectItem('', []);
   updateAddSubjectBtn();
+  // 개별수강생 칩에 이름을 붙이려면 명단이 있어야 한다
+  if (subjects.some(function(s){ return s.students && s.students.length; })){
+    ensureRosterAll(function(){ list.querySelectorAll('.student-chip-row').forEach(renderStudentChips); });
+  }
+}
+
+// "이 과목을 수강하는 학생 추가하기" 검색용 전체 명단. 처음 필요할 때 한 번 불러오고, 학생 명단을 저장하면 비운다.
+var rosterAll = null, rosterAllLoading = false, rosterAllWaiters = [];
+function ensureRosterAll(cb){
+  if (rosterAll){ cb(); return; }
+  rosterAllWaiters.push(cb);
+  if (rosterAllLoading) return;
+  rosterAllLoading = true;
+  function done(failed){
+    rosterAllLoading = false;
+    var waiters = rosterAllWaiters; rosterAllWaiters = [];
+    waiters.forEach(function(f){ f(failed); });
+  }
+  gs.withSuccessHandler(function(res){ rosterAll = res.students || []; done(false); })
+    .withFailureHandler(function(){ done(true); })
+    .getRosterAll(TEACHER_PW);
+}
+function rosterAllName(p){
+  var found = (rosterAll || []).filter(function(s){
+    return String(s.grade) === String(p.grade) && String(s.cls) === String(p.cls) && String(s.number) === String(p.number);
+  })[0];
+  return found ? found.name : '';
+}
+
+function renderStudentChips(chipRow){
+  var list = JSON.parse(chipRow.dataset.students || '[]');
+  chipRow.innerHTML = list.map(function(p, idx){
+    var name = rosterAllName(p);
+    return '<span class="class-chip">' + studentId(p.grade, p.cls, p.number) + (name ? ' ' + escapeHtml(name) : '') +
+      '<button type="button" data-idx="' + idx + '" title="삭제">×</button></span>';
+  }).join('');
+  chipRow.querySelectorAll('button').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var i = Number(btn.dataset.idx);
+      var p = list[i];
+      var name = rosterAllName(p);
+      var ok = confirm(studentId(p.grade, p.cls, p.number) + (name ? ' ' + name : '') + ' 학생을 목록에서 삭제할까요?');
+      if (!ok) return;
+      list.splice(i, 1);
+      chipRow.dataset.students = JSON.stringify(list);
+      renderStudentChips(chipRow);
+      markDirty('config');
+    });
+  });
 }
 
 function renderClassChips(chipRow){
@@ -2050,7 +2151,7 @@ function subjectItemName(item){
   return sel.value;
 }
 
-function addSubjectItem(name, classPairs, id){
+function addSubjectItem(name, classPairs, id, students){
   var list = document.getElementById('subjectList');
   if (list.children.length >= MAX_SUBJECTS) return;
   var item = document.createElement('div');
@@ -2078,7 +2179,7 @@ function addSubjectItem(name, classPairs, id){
       '" placeholder="과목명을 입력해주세요"' + (isOther ? '' : ' hidden') + ' />' +
     '<div class="class-chip-row"></div>' +
     '<button type="button" class="class-toggle">' +
-      '<span class="class-toggle-label">이 과목을 듣는 학년·반 (여러 개 추가 가능)</span>' +
+      '<span class="class-toggle-label">이 과목을 수강하는 학년/반 추가하기</span>' +
       '<svg class="class-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
         '<path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
       '</svg>' +
@@ -2090,6 +2191,20 @@ function addSubjectItem(name, classPairs, id){
         '<button type="button" class="class-other-btn" title="다른 반 번호 입력">+</button>' +
         '<input type="text" class="class-add-custom" aria-label="반 번호" placeholder="반 숫자만" hidden />' +
         '<button type="button" class="class-add-btn" hidden>확인</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="student-enroll">' +
+      '<div class="class-chip-row student-chip-row"></div>' +
+      '<button type="button" class="class-toggle student-toggle">' +
+        '<span class="class-toggle-label">이 과목을 수강하는 학생 추가하기</span>' +
+        '<svg class="class-toggle-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">' +
+          '<path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '</svg>' +
+      '</button>' +
+      '<div class="student-picker" hidden>' +
+        '<input type="text" class="student-search" aria-label="학번 또는 이름으로 학생 검색" placeholder="학번(예: 10203) 또는 이름" autocomplete="off" />' +
+        '<p class="student-results-hint"></p>' +
+        '<ul class="student-results"></ul>' +
       '</div>' +
     '</div>';
 
@@ -2131,6 +2246,7 @@ function addSubjectItem(name, classPairs, id){
     chipRow.dataset.pairs = JSON.stringify(pairs);
     renderClassChips(chipRow);
     markDirty('config');
+    renderStudentResults();
   }
 
   var addRow = item.querySelector('.class-add-row');
@@ -2181,6 +2297,104 @@ function addSubjectItem(name, classPairs, id){
   customInput.addEventListener('keydown', function(e){
     if (e.key === 'Enter'){ e.preventDefault(); confirmCustom(); }
   });
+
+  // 이 과목을 수강하는 학생 추가하기: 학번(앞자리부터) 또는 이름(일부)으로 명단에서 찾아 한 명씩 추가
+  var studentChipRow = item.querySelector('.student-chip-row');
+  studentChipRow.dataset.students = JSON.stringify(students || []);
+  renderStudentChips(studentChipRow);
+
+  var studentToggle = item.querySelector('.student-toggle');
+  var studentPicker = item.querySelector('.student-picker');
+  var searchInput = item.querySelector('.student-search');
+  var resultsEl = item.querySelector('.student-results');
+  var hintEl = item.querySelector('.student-results-hint');
+  var STUDENT_RESULT_LIMIT = 30;
+  var addable = []; // 지금 목록에서 "추가"를 누를 수 있는 학생들 (Enter 로 한 명 바로 추가할 때 씀)
+
+  studentToggle.addEventListener('click', function(){
+    studentPicker.hidden = !studentPicker.hidden;
+    studentToggle.classList.toggle('open', !studentPicker.hidden);
+    if (!studentPicker.hidden){
+      renderStudentResults();
+      searchInput.focus();
+    }
+  });
+
+  function renderStudentResults(){
+    if (studentPicker.hidden) return;
+    var q = searchInput.value.replace(/\s+/g, '');
+    resultsEl.innerHTML = '';
+    addable = [];
+    if (!q){ hintEl.textContent = '학번이나 이름을 입력하면 명단에서 찾아 보여줘요.'; return; }
+    if (!rosterAll){
+      hintEl.textContent = '명단을 불러오는 중…';
+      ensureRosterAll(function(failed){
+        if (failed){ hintEl.textContent = '명단을 불러오지 못했어요. 다시 시도해주세요.'; return; }
+        renderStudentResults();
+      });
+      return;
+    }
+    var byId = /^\d+$/.test(q);
+    var matches = rosterAll.filter(function(s){
+      return byId ? studentId(s.grade, s.cls, s.number).indexOf(q) === 0 : String(s.name).replace(/\s+/g, '').indexOf(q) !== -1;
+    });
+    if (!matches.length){
+      hintEl.textContent = byId ? '이 학번으로 시작하는 학생이 명단에 없어요.' : '이 이름의 학생이 명단에 없어요.';
+      return;
+    }
+    hintEl.textContent = matches.length > STUDENT_RESULT_LIMIT
+      ? matches.length + '명 중 ' + STUDENT_RESULT_LIMIT + '명만 보여요. 학번이나 이름을 더 입력해주세요.'
+      : '';
+
+    var pairs = JSON.parse(chipRow.dataset.pairs || '[]');
+    var added = JSON.parse(studentChipRow.dataset.students || '[]');
+    matches.slice(0, STUDENT_RESULT_LIMIT).forEach(function(s){
+      var whole = pairs.some(function(p){ return String(p.grade) === String(s.grade) && String(p.cls) === String(s.cls); });
+      var already = added.some(function(p){
+        return String(p.grade) === String(s.grade) && String(p.cls) === String(s.cls) && String(p.number) === String(s.number);
+      });
+      var li = document.createElement('li');
+      li.innerHTML =
+        '<span class="student-result-id">' + studentId(s.grade, s.cls, s.number) + '</span>' +
+        '<span class="student-result-name">' + escapeHtml(s.name) + '</span>' +
+        '<span class="student-result-meta">' + escapeHtml(s.grade) + '학년 ' + escapeHtml(s.cls) + '반 ' + escapeHtml(s.number) + '번</span>' +
+        '<button type="button" class="class-add-btn"' + (whole || already ? ' disabled' : '') + '>' +
+          (already ? '추가됨' : (whole ? '반 전체 수강' : '추가')) + '</button>';
+      if (!whole && !already){
+        addable.push(s);
+        li.querySelector('button').addEventListener('click', function(){ addStudent(s); });
+      }
+      resultsEl.appendChild(li);
+    });
+  }
+
+  function addStudent(s){
+    var added = JSON.parse(studentChipRow.dataset.students || '[]');
+    added.push({ grade: String(s.grade), cls: String(s.cls), number: String(s.number) });
+    added.sort(function(a, b){
+      return (Number(a.grade) - Number(b.grade)) || (Number(a.cls) - Number(b.cls)) || (Number(a.number) - Number(b.number));
+    });
+    studentChipRow.dataset.students = JSON.stringify(added);
+    renderStudentChips(studentChipRow);
+    markDirty('config');
+    renderStudentResults();
+    // 다음 학생을 바로 입력할 수 있게 검색어를 선택해 둔다
+    searchInput.focus();
+    searchInput.select();
+  }
+
+  searchInput.addEventListener('input', function(e){
+    e.stopPropagation(); // 검색어 입력은 저장할 변경이 아님 (#subjectList 의 input 이벤트가 변경으로 보지 않게)
+    renderStudentResults();
+  });
+  searchInput.addEventListener('keydown', function(e){
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (addable.length === 1) addStudent(addable[0]);
+  });
+  // 칩을 지우면(반 칩 포함) 검색 결과의 "추가됨"/"반 전체 수강" 표시도 다시 맞춘다
+  chipRow.addEventListener('click', renderStudentResults);
+  studentChipRow.addEventListener('click', renderStudentResults);
 
   list.appendChild(item);
   updateAddSubjectBtn();
@@ -2317,7 +2531,8 @@ document.getElementById('saveConfigBtn').addEventListener('click', function(){
   var entries = Array.from(items).map(function(item){
     var name = subjectItemName(item);
     var pairs = JSON.parse(item.querySelector('.class-chip-row').dataset.pairs || '[]');
-    return { name: name, classPairs: pairs, id: item.dataset.subjectId || '' };
+    var students = JSON.parse(item.querySelector('.student-chip-row').dataset.students || '[]');
+    return { name: name, classPairs: pairs, students: students, id: item.dataset.subjectId || '' };
   }).filter(function(e){ return e.name; }).slice(0, MAX_SUBJECTS);
   if (entries.length === 0){ showToast('과목을 하나 이상 추가해주세요.', true); return; }
 
@@ -2332,7 +2547,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', function(){
     var old = currentConfig.subjects.filter(function(s){ return s.id && s.id === e.id; })[0];
     return {
       id: e.id, name: e.name, declaredTotal: old ? old.declaredTotal : 0,
-      classPairs: e.classPairs
+      classPairs: e.classPairs, students: e.students
     };
   });
 
@@ -2368,7 +2583,7 @@ function resolveDomainInstance(){
   if (candidates.length <= 1) return candidates[0] || null;
   var grade = document.getElementById('domainGradeSelect').value;
   var matched = candidates.filter(function(s){
-    return s.classPairs.some(function(p){ return String(p.grade) === String(grade); });
+    return subjectClasses(s).some(function(p){ return String(p.grade) === String(grade); });
   });
   return matched[0] || candidates[0];
 }
@@ -2377,7 +2592,7 @@ function populateDomainGradeSelect(){
   var candidates = currentConfig.subjects.filter(function(s){ return s.name === selectedDomainSubject; });
   var grades = [];
   candidates.forEach(function(s){
-    s.classPairs.forEach(function(p){ if (grades.indexOf(p.grade) === -1) grades.push(p.grade); });
+    subjectClasses(s).forEach(function(p){ if (grades.indexOf(p.grade) === -1) grades.push(p.grade); });
   });
   grades.sort(function(a,b){ return Number(a) - Number(b); });
   var sel = document.getElementById('domainGradeSelect');
@@ -2531,7 +2746,7 @@ document.getElementById('saveDomainsBtn').addEventListener('click', function(){
     return {
       id: s.id, name: s.name,
       declaredTotal: isTarget ? newDeclaredTotal : s.declaredTotal,
-      classPairs: s.classPairs
+      classPairs: s.classPairs, students: s.students
     };
   });
 
@@ -2574,7 +2789,7 @@ function onAttendanceSubjectChange(){
   var matchingSubjects = currentConfig.subjects.filter(function(s){ return s.name === selectedAttendanceSubject; });
   var byGrade = {};
   matchingSubjects.forEach(function(subj){
-    subj.classPairs.forEach(function(p){
+    subjectClasses(subj).forEach(function(p){
       byGrade[p.grade] = byGrade[p.grade] || [];
       if (byGrade[p.grade].indexOf(p.cls) === -1) byGrade[p.grade].push(p.cls);
     });
@@ -2872,7 +3087,7 @@ function onScoreSubjectChange(){
   var matchingSubjects = currentConfig.subjects.filter(function(s){ return s.name === selectedScoreSubject; });
   var byGrade = {};
   matchingSubjects.forEach(function(subj){
-    subj.classPairs.forEach(function(p){
+    subjectClasses(subj).forEach(function(p){
       byGrade[p.grade] = byGrade[p.grade] || [];
       if (byGrade[p.grade].indexOf(p.cls) === -1) byGrade[p.grade].push(p.cls);
     });
@@ -3383,7 +3598,7 @@ function onXlsxExportSubjectChange(){
   var matchingSubjects = currentConfig.subjects.filter(function(s){ return s.name === selectedXlsxExportSubject; });
   var byGrade = {};
   matchingSubjects.forEach(function(subj){
-    subj.classPairs.forEach(function(p){
+    subjectClasses(subj).forEach(function(p){
       byGrade[p.grade] = byGrade[p.grade] || [];
       if (byGrade[p.grade].indexOf(p.cls) === -1) byGrade[p.grade].push(p.cls);
     });

@@ -9,9 +9,11 @@
  *   설정  : A열 키 / B열 값  (연도, 학기, 비밀번호, 1학년반수, 2학년반수, 3학년반수)
  *          "비밀번호"는 교사 관리 화면(?page=teacher) 접속 시 입력해야 하는 값 — 시트에서 직접 바꾸면 됨
  *          "N학년반수"는 그 학년의 반이 몇 반까지 있는지(매년 바뀔 수 있음) — 시트에서 숫자만 바꾸면 반영됨
- *   과목  : 과목명 | 총점 | 학년반목록 | ID  (2행부터, 최대 5개 과목. "총점"은 영역 배점 합과 별개로 선언하는 만점 — 100점이 아닐 수도 있음.
- *          "학년반목록"은 이 과목을 듣는 학년-반 조합을 "학년-반" 형식으로 세미콜론(;)으로 이어붙인 문자열. 예: "1-1;1-2;2-3"
- *          "ID"는 화면에 안 보이는 내부 식별자 — 같은 이름의 과목을 학년별로 여러 개 만들어도(예: "기술·가정"을 1학년용/2학년용 각각) 영역이 안 섞이게 해줌)
+ *   과목  : 과목명 | 총점 | 학년반목록 | ID | 개별수강생  (2행부터, 최대 5개 과목. "총점"은 영역 배점 합과 별개로 선언하는 만점 — 100점이 아닐 수도 있음.
+ *          "학년반목록"은 이 과목을 반 전체가 듣는 학년-반 조합을 "학년-반" 형식으로 세미콜론(;)으로 이어붙인 문자열. 예: "1-1;1-2;2-3"
+ *          "ID"는 화면에 안 보이는 내부 식별자 — 같은 이름의 과목을 학년별로 여러 개 만들어도(예: "기술·가정"을 1학년용/2학년용 각각) 영역이 안 섞이게 해줌
+ *          "개별수강생"은 반 전체가 아니라 학생 한 명씩 이 과목을 듣는 경우 "학년-반-번호"를 세미콜론(;)으로 이은 문자열. 예: "2-3-5;3-1-12"
+ *          → 이 과목의 학급 = 학년반목록 + 개별수강생이 속한 학급. 개별수강생으로만 들어간 학급에서는 그 학생들만 이 과목 화면에 나옴)
  *   영역메모 : 과목ID | 학년 | 반 | 영역명 | 메모  — 응시·결시 관리의 "영역별 메모"(반마다 따로). 영역 상태는 여기에 없고 "영역" 시트의 "상태" 열에서 관리함
  *          (예전 이름은 "진행상태" — 그 이름의 시트가 있으면 처음 열 때 "영역메모"로 이름만 바뀌고 메모는 그대로 남음)
  *   영역  : 과목ID | 영역명 | 배점 | 그룹 | 상태  (그룹이 같으면 화면에서 한 묶음으로 표시. "과목명"이 아니라 "과목ID" 기준이라 이름이 같은 과목끼리도 안 섞임)
@@ -68,8 +70,8 @@ function ensureSheets_() {
   if (!subj) {
     seedDemoScores = true;
     subj = ss.insertSheet('과목');
-    subj.getRange('A1:D1').setValues([['과목명', '총점', '학년반목록', 'ID']]);
-    subj.getRange('A2:D2').setValues([[DEMO_SUBJECT, 100, '1-1;1-2;2-1;2-2', DEMO_SUBJECT_ID]]);
+    subj.getRange('A1:E1').setValues([SUBJECT_HEADER]);
+    subj.getRange('A2:E2').setValues([[DEMO_SUBJECT, 100, '1-1;1-2;2-1;2-2', DEMO_SUBJECT_ID, '']]);
   } else if (String(subj.getRange(1, 2).getValue()) === '현재영역') {
     // 예전 형식(과목명 | 현재영역 | 총점 | 학년반목록 | ID)에서 "현재영역" 열을 없앤다. 이번 수행 표시는 "영역" 시트의 상태로 대신한다.
     // 없애기 전에 적혀 있던 현재영역은 아래에서 그 영역의 상태("이번 수행")로 옮겨 둔다.
@@ -79,6 +81,9 @@ function ensureSheets_() {
       .map(function (r) { return { id: String(r[4]), domain: String(r[1]), pairs: parseClassPairs_(r[3]) }; });
     subj.deleteColumn(2);
   }
+  // "개별수강생" 열(반 전체가 아니라 학생 한 명씩 수강)이 없는 예전 과목 시트에는 열을 더한다
+  if (subj.getMaxColumns() < 5) subj.insertColumnsAfter(subj.getMaxColumns(), 5 - subj.getMaxColumns());
+  if (String(subj.getRange(1, 5).getValue()) !== SUBJECT_HEADER[4]) subj.getRange(1, 5).setValue(SUBJECT_HEADER[4]);
 
   var dom = ss.getSheetByName('영역');
   if (!dom) {
@@ -176,6 +181,7 @@ function ensureSheets_() {
   return ss;
 }
 
+var SUBJECT_HEADER = ['과목명', '총점', '학년반목록', 'ID', '개별수강생'];
 var DOMAIN_STATUSES = ['완료', '이번 수행', '예정'];
 var DOMAIN_HEADER = ['과목ID', '영역명', '배점', '그룹', '상태'];
 var MEMO_SHEET = '영역메모';
@@ -266,27 +272,66 @@ function serializeClassPairs_(pairs) {
   return (pairs || []).map(function (p) { return p.grade + '-' + p.cls; }).join(';');
 }
 
+// "개별수강생" 칸: "학년-반-번호;학년-반-번호" → [{grade, cls, number}]
+function parseStudentList_(str) {
+  return String(str || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean).map(function (item) {
+    var parts = item.split('-');
+    return { grade: parts[0], cls: parts[1], number: parts[2] };
+  }).filter(function (s) { return s.grade && s.cls && s.number; });
+}
+
+function serializeStudentList_(list) {
+  return (list || []).map(function (s) { return s.grade + '-' + s.cls + '-' + s.number; }).join(';');
+}
+
 function getSubjects_(ss) {
   var sheet = ss.getSheetByName('과목');
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
-  return sheet.getRange(2, 1, lastRow - 1, 4).getValues()
+  return sheet.getRange(2, 1, lastRow - 1, 5).getValues()
     .filter(function (r) { return r[0]; })
     .map(function (r) {
       return {
         name: String(r[0]), declaredTotal: Number(r[1]) || 0,
-        classPairs: parseClassPairs_(r[2]), id: String(r[3] || '')
+        classPairs: parseClassPairs_(r[2]), id: String(r[3] || ''),
+        students: parseStudentList_(r[4])
       };
     });
 }
 
+// 이 과목이 나오는 학급: 반 전체가 듣는 학급(학년반목록) + 개별수강생이 속한 학급
+function subjectClasses_(s) {
+  var seen = {}, list = [];
+  s.classPairs.concat(s.students).forEach(function (p) {
+    var key = p.grade + '-' + p.cls;
+    if (seen[key]) return;
+    seen[key] = true;
+    list.push({ grade: p.grade, cls: p.cls });
+  });
+  return list;
+}
+
+// 그 학급에서 이 과목을 듣는 번호 목록. 반 전체가 들으면 null(모두).
+function enrolledNumbers_(s, grade, cls) {
+  var whole = s.classPairs.some(function (p) { return String(p.grade) === String(grade) && String(p.cls) === String(cls); });
+  if (whole) return null;
+  return s.students
+    .filter(function (p) { return String(p.grade) === String(grade) && String(p.cls) === String(cls); })
+    .map(function (p) { return String(p.number); });
+}
+
+function isEnrolled_(s, grade, cls, number) {
+  var nums = enrolledNumbers_(s, grade, cls);
+  return nums === null || nums.indexOf(String(number)) !== -1;
+}
+
 // 이름이 같은 과목이 여러 개 있을 수 있으므로, 이름만으로는 어떤 과목인지 확정할 수 없다.
-// 후보가 여럿이면 학년·반이 그 과목의 학년반목록에 포함되는 쪽을 고른다.
+// 후보가 여럿이면 학년·반이 그 과목의 학급(개별수강생 학급 포함)에 들어가는 쪽을 고른다.
 function resolveSubjectInstance_(subjects, name, grade, cls) {
   var candidates = subjects.filter(function (s) { return s.name === name; });
   if (candidates.length <= 1) return candidates[0] || null;
   var matched = candidates.filter(function (s) {
-    return s.classPairs.some(function (p) { return String(p.grade) === String(grade) && String(p.cls) === String(cls); });
+    return subjectClasses_(s).some(function (p) { return String(p.grade) === String(grade) && String(p.cls) === String(cls); });
   });
   return matched[0] || candidates[0];
 }
@@ -507,12 +552,12 @@ function getStudentResult(grade, cls, number, name) {
   }
 
   var cfg = getCfgMap_(ss);
-  // 이 학생의 학급(학년·반)이 "수업 과목 설정"에서 연결된 과목이 이 학생이 듣는 과목이다.
+  // "수업 과목 설정"에서 이 학생의 학급 전체가 연결됐거나, 이 학생이 개별수강생으로 추가된 과목이 이 학생이 듣는 과목이다.
   var studentSubjects = getSubjects_(ss).filter(function (s) {
-    return s.classPairs.some(function (p) { return String(p.grade) === String(grade) && String(p.cls) === String(cls); });
+    return isEnrolled_(s, grade, cls, number);
   });
   if (studentSubjects.length === 0) {
-    return { ok: false, error: '이 학급에 연결된 수업 과목이 아직 없습니다.' };
+    return { ok: false, error: '이 학생에게 연결된 수업 과목이 아직 없습니다.' };
   }
 
   var studentName = nameMatches[0][3];
@@ -590,7 +635,7 @@ function getTeacherConfig(password) {
   var subjects = getSubjects_(ss).map(function (s) {
     return {
       id: s.id, name: s.name, declaredTotal: s.declaredTotal,
-      classPairs: s.classPairs, domains: getDomainsForSubject_(ss, s.id)
+      classPairs: s.classPairs, students: s.students, domains: getDomainsForSubject_(ss, s.id)
     };
   });
   return {
@@ -629,7 +674,7 @@ function saveSubjects(password, subjects) {
         return {
           name: String(s.name).trim(),
           declaredTotal: Number(s.declaredTotal) || 0, classPairs: s.classPairs || [],
-          id: String(s.id || '').trim() || Utilities.getUuid()
+          id: String(s.id || '').trim() || Utilities.getUuid(), students: s.students || []
         };
       })
       .filter(function (s) { return s.name; })
@@ -637,10 +682,10 @@ function saveSubjects(password, subjects) {
 
     var sheet = ss.getSheetByName('과목');
     sheet.clear();
-    sheet.getRange(1, 1, 1, 4).setValues([['과목명', '총점', '학년반목록', 'ID']]);
+    sheet.getRange(1, 1, 1, 5).setValues([SUBJECT_HEADER]);
     if (clean.length) {
-      sheet.getRange(2, 1, clean.length, 4).setValues(clean.map(function (s) {
-        return [s.name, s.declaredTotal, serializeClassPairs_(s.classPairs), s.id];
+      sheet.getRange(2, 1, clean.length, 5).setValues(clean.map(function (s) {
+        return [s.name, s.declaredTotal, serializeClassPairs_(s.classPairs), s.id, serializeStudentList_(s.students)];
       }));
     }
     return { ok: true };
@@ -703,13 +748,15 @@ function saveDomains(password, subjectId, domains) {
 function getClassScores(password, subject, grade, cls) {
   var ss = ensureSheets_();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
-  var roster = ss.getSheetByName('명단');
-  var rosterData = roster.getRange(2, 1, Math.max(roster.getLastRow() - 1, 0), 4).getValues()
-    .filter(function (r) { return String(r[0]) === String(grade) && String(r[1]) === String(cls); })
-    .sort(function (a, b) { return Number(a[2]) - Number(b[2]); });
-
   var instance = resolveSubjectInstance_(getSubjects_(ss), subject, grade, cls);
   var domains = instance ? getDomainsForSubject_(ss, instance.id) : [];
+
+  var roster = ss.getSheetByName('명단');
+  var rosterData = roster.getRange(2, 1, Math.max(roster.getLastRow() - 1, 0), 4).getValues()
+    .filter(function (r) {
+      return String(r[0]) === String(grade) && String(r[1]) === String(cls) && (!instance || isEnrolled_(instance, grade, cls, r[2]));
+    })
+    .sort(function (a, b) { return Number(a[2]) - Number(b[2]); });
 
   var scoresBook = readScores_(ss, subject);
   var scoreData = scoresBook.data;
@@ -739,7 +786,7 @@ function getSubjectAverages(password, subject) {
   var subjects = getSubjects_(ss);
   var seen = {}, pairs = [];
   subjects.filter(function (s) { return s.name === subject; }).forEach(function (s) {
-    s.classPairs.forEach(function (p) {
+    subjectClasses_(s).forEach(function (p) {
       var key = p.grade + '-' + p.cls;
       if (!seen[key]) { seen[key] = true; pairs.push(p); }
     });
@@ -755,7 +802,9 @@ function getSubjectAverages(password, subject) {
     var domains = instance ? getDomainsForSubject_(ss, instance.id) : [];
     var numbers = {};
     rosterData.forEach(function (r) {
-      if (String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls)) numbers[String(r[2])] = true;
+      if (String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls) && (!instance || isEnrolled_(instance, p.grade, p.cls, r[2]))) {
+        numbers[String(r[2])] = true;
+      }
     });
     var rows = book.data.filter(function (r) {
       return String(r[0]) === subject && String(r[1]) === String(p.grade) && String(r[2]) === String(p.cls) && numbers[String(r[3])];
@@ -844,6 +893,19 @@ function saveClassScores(password, subject, grade, cls, students) {
   }
 }
 
+// 수업 과목 설정의 "이 과목을 수강하는 학생 추가하기" 검색용: 전 학년 명단
+function getRosterAll(password) {
+  var ss = ensureSheets_();
+  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
+  var roster = ss.getSheetByName('명단');
+  var data = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
+  return {
+    students: sortByClassOrder_(data.filter(function (r) { return r[0] && r[3]; }), 0, 1, 2).map(function (r) {
+      return { grade: String(r[0]), cls: String(r[1]), number: String(r[2]), name: String(r[3]) };
+    })
+  };
+}
+
 // 학생 명단은 과목과 상관없이 학급(학년·반) 단위다.
 function getRosterForClass(password, grade, cls) {
   var ss = ensureSheets_();
@@ -893,7 +955,9 @@ function getAttendanceForClass(password, subject, grade, cls) {
 
   var roster = ss.getSheetByName('명단');
   var rosterData = roster.getRange(2, 1, Math.max(roster.getLastRow() - 1, 0), 4).getValues()
-    .filter(function (r) { return String(r[0]) === String(grade) && String(r[1]) === String(cls); })
+    .filter(function (r) {
+      return String(r[0]) === String(grade) && String(r[1]) === String(cls) && (!instance || isEnrolled_(instance, grade, cls, r[2]));
+    })
     .sort(function (a, b) { return Number(a[2]) - Number(b[2]); });
 
   var scoresBook = readScores_(ss, subject);
@@ -1079,7 +1143,7 @@ function getHomeStats(password) {
 
     var seen = {}, pairs = [];
     subjects.filter(function (s) { return s.name === name; }).forEach(function (s) {
-      s.classPairs.forEach(function (p) {
+      subjectClasses_(s).forEach(function (p) {
         var key = p.grade + '-' + p.cls;
         if (!seen[key]) { seen[key] = true; pairs.push(p); }
       });
@@ -1090,7 +1154,9 @@ function getHomeStats(password) {
       if (!instance) return;
       var domains = getDomainsForSubject_(ss, instance.id);
       var classNumbers = rosterData
-        .filter(function (r) { return String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls); })
+        .filter(function (r) {
+          return String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls) && isEnrolled_(instance, p.grade, p.cls, r[2]);
+        })
         .map(function (r) { return String(r[2]); });
 
       domains.forEach(function (d) {
