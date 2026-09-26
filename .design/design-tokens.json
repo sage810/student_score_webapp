@@ -74,7 +74,7 @@
   "motion": { "ease": "ease", "fast": "0.15s", "base": "0.35s" },
   "zIndex": { "tableHead": 2, "topbar": 25, "bottomBar": 30 },
   "breakpoints": {
-    "topbarCompact": "1100px 이하",
+    "topbarCompact": "1280px 이하",
     "topbarGrid3": "780px 이하",
     "bottomBarStack": "720px 이하",
     "rowsStack": "640px 이하"
