@@ -189,9 +189,9 @@
   .home-phase.is-loop{ background:rgba(133,91,251,0.10); } /* 진행: 수행평가마다 반복되는 칸 */
   .home-phase:nth-child(3){ animation-delay:60ms; }
   .home-phase:nth-child(5){ animation-delay:120ms; }
-  .home-phase-head{ display:flex; flex-direction:column; align-items:flex-start; gap:4px; padding:4px 4px 8px; }
+  /* 칸 제목은 가운데 정렬. "진행"만 아래에 반복 표시가 붙으므로, 세 칸의 첫 카드 높이가 맞도록 제목 영역 높이를 같게 둔다 */
+  .home-phase-head{ display:flex; flex-direction:column; align-items:center; gap:4px; min-height:56px; padding:4px 4px 8px; text-align:center; }
   .home-phase-head h3{ margin:0; font-size:15px; font-weight:800; }
-  .home-phase-when{ font-size:12px; font-weight:600; color:var(--ink-soft); }
   .home-phase-loop{
     display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px;
     background:var(--purple); color:#fff; font-size:12px; font-weight:700;
@@ -1595,11 +1595,11 @@ var HOME_SECTIONS = [
   { key:'xlsxExport', title:'엑셀 파일 다운로드', desc:'제출용 성적 엑셀 파일을 내려받아요.', phase:2,
     icon:'<path d="M12 3.5v11M8 11l4 4 4-4"/><path d="M4.5 16v2.5A2 2 0 0 0 6.5 20.5h11a2 2 0 0 0 2-2V16"/>' }
 ];
-// 진행: 수행평가마다 반복되는 단계. 나머지는 언제 하는지(when)를 보여준다.
+// 진행: 수행평가마다 반복되는 단계
 var HOME_PHASES = [
-  { label:'준비', when:'학기 초에 한 번' },
+  { label:'준비' },
   { label:'진행', loop:true },
-  { label:'확인·출력', when:'필요할 때 · 학기 말' }
+  { label:'확인·출력' }
 ];
 var HOME_SVG = {
   right: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
@@ -1620,12 +1620,10 @@ function renderHomeShell(){
         '<span class="home-card-status" id="homeStatus-' + s.key + '"></span>' +
       '</button>';
     }).join('<span class="home-step-down">' + HOME_SVG.down + '</span>');
-    var when = ph.loop
-      ? '<span class="home-phase-loop">' + HOME_SVG.loop + '수행평가마다 반복</span>'
-      : '<span class="home-phase-when">' + ph.when + '</span>';
+    var loopChip = ph.loop ? '<span class="home-phase-loop">' + HOME_SVG.loop + '수행평가마다 반복</span>' : '';
     var loopNote = ph.loop ? '<div class="home-loop-note">' + HOME_SVG.loop + '다음 수행평가도 4 → 5 반복</div>' : '';
     return (pi ? '<div class="home-flow-arrow">' + HOME_SVG.right + '</div>' : '') +
-      '<div class="home-phase' + (ph.loop ? ' is-loop' : '') + '"><div class="home-phase-head"><h3>' + ph.label + '</h3>' + when + '</div>' + cards + loopNote + '</div>';
+      '<div class="home-phase' + (ph.loop ? ' is-loop' : '') + '"><div class="home-phase-head"><h3>' + ph.label + '</h3>' + loopChip + '</div>' + cards + loopNote + '</div>';
   }).join('');
 }
 // 결시자 수행안내는 수행 영역을 "전체 영역"으로 두고 결시자 불러오기까지 눌러 준다.
