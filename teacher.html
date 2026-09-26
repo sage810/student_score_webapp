@@ -169,7 +169,7 @@
   }
   .home-subject-empty{ font-size:12.5px; color:var(--ink-soft); }
 
-  .home-stats{ display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin:0 0 28px; }
+  .home-stats{ display:grid; grid-template-columns:repeat(2, 1fr); gap:12px; margin:0 0 28px; }
   @media (max-width:640px){ .home-stats{ grid-template-columns:1fr; } }
   .home-stat{
     display:flex; align-items:center; gap:12px;
@@ -190,7 +190,16 @@
   .home-stat.ok .home-stat-icon{ background:var(--green-tint); color:var(--green); }
   .home-stat.ok .home-stat-value{ color:var(--green); }
   .home-stat:nth-child(2){ animation-delay:40ms; }
-  .home-stat:nth-child(3){ animation-delay:80ms; }
+  /* 누를 수 있는 통계 카드("결시 대기" → 결시자 수행안내) */
+  .home-stat-link{
+    width:100%; font-family:inherit; color:inherit; text-align:left; cursor:pointer;
+    transition: border-color .12s ease, box-shadow .12s ease;
+  }
+  .home-stat-link .home-stat-body, .home-stat-link .home-stat-label, .home-stat-link .home-stat-value{ display:block; }
+  .home-stat-link:hover{ border-color:var(--purple); box-shadow:var(--shadow-card); }
+  .home-stat-link:focus-visible{ outline:2px solid var(--purple); outline-offset:2px; }
+  .home-stat-go{ display:flex; margin-left:auto; color:var(--ink-faint); transition: color .12s ease; }
+  .home-stat-link:hover .home-stat-go{ color:var(--purple); }
 
   .home-phase{ margin-bottom:28px; animation:homeRise .32s ease-out both; }
   .home-phase:last-child{ margin-bottom:0; }
@@ -1632,26 +1641,30 @@ function refreshHomeGreeting(){
 }
 
 var HOME_STAT_ICONS = {
-  subject: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16.5A1.5 1.5 0 0 1 18.5 21H6.5A2.5 2.5 0 0 1 4 18.5v-13Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/><path d="M8 7.5h8M8 10.5h5"/>',
   bell: '<path d="M12 3.75v1.7"/><path d="M6.5 11c0-3.3 1.9-5.55 4.15-5.9a1.4 1.4 0 0 1 2.7 0C15.6 5.45 17.5 7.7 17.5 11v3l1.5 3h-14l1.5-3v-3Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/>',
   check: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.3 2.3L15.7 9.4"/>'
 };
 function homeStatIcon(name){ return '<span class="home-stat-icon"><svg viewBox="0 0 24 24">' + HOME_STAT_ICONS[name] + '</svg></span>'; }
 function renderHomeStatsLoading(){
   document.getElementById('homeStats').innerHTML =
-    '<div class="home-stat">' + homeStatIcon('subject') + '<div class="home-stat-body"><div class="home-stat-label">맡은 과목</div><div class="home-stat-value">…</div></div></div>' +
     '<div class="home-stat">' + homeStatIcon('bell') + '<div class="home-stat-body"><div class="home-stat-label">결시 대기</div><div class="home-stat-value">…</div></div></div>' +
     '<div class="home-stat">' + homeStatIcon('check') + '<div class="home-stat-body"><div class="home-stat-label">이번 수행 완료</div><div class="home-stat-value">…</div></div></div>';
 }
 function renderHomeStats(stats){
   document.getElementById('homeStats').innerHTML =
-    '<div class="home-stat">' + homeStatIcon('subject') +
-      '<div class="home-stat-body"><div class="home-stat-label">맡은 과목</div><div class="home-stat-value">' + stats.subjectCount + '<small>개</small></div></div></div>' +
-    '<div class="home-stat' + (stats.absentPending > 0 ? ' warn' : '') + '">' + homeStatIcon('bell') +
-      '<div class="home-stat-body"><div class="home-stat-label">결시 대기</div><div class="home-stat-value">' + stats.absentPending + '<small>건</small></div></div></div>' +
+    '<button type="button" class="home-stat home-stat-link' + (stats.absentPending > 0 ? ' warn' : '') + '" aria-label="결시 대기 ' + stats.absentPending + '건, 결시자 수행안내에서 보기">' + homeStatIcon('bell') +
+      '<span class="home-stat-body"><span class="home-stat-label">결시 대기</span><span class="home-stat-value">' + stats.absentPending + '<small>건</small></span></span>' +
+      '<span class="home-stat-go" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></button>' +
     '<div class="home-stat ok">' + homeStatIcon('check') +
       '<div class="home-stat-body"><div class="home-stat-label">이번 수행 완료</div><div class="home-stat-value">' + (stats.performRate === null ? '-' : stats.performRate + '<small>%</small>') + '</div></div></div>';
 }
+// "결시 대기"를 누르면 결시자 수행안내로 가서 수행 영역을 "전체 영역"으로 두고 결시자 불러오기까지 눌러 준다
+document.getElementById('homeStats').addEventListener('click', function(e){
+  if (!e.target.closest('.home-stat-link')) return;
+  goToSection('notice');
+  document.getElementById('noticeDomainSelect').value = '';
+  document.getElementById('loadNoticeBtn').click();
+});
 function loadHomeStats(){
   renderHomeStatsLoading();
   gs.withSuccessHandler(renderHomeStats).withFailureHandler(function(){
