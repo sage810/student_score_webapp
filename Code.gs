@@ -39,7 +39,7 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-// 학생 화면의 "교사 관리" 탭이 <배포 주소>?page=teacher 로 이동할 수 있게 배포 주소를 알려줌
+// 배포 주소를 알려줌 — 학생 화면의 "교사 관리" 탭은 <배포 주소>?page=teacher 로, 교사 비밀번호 화면의 "← 이전"은 <배포 주소>(학생 화면)로 이동
 function getWebAppUrl() {
   return ScriptApp.getService().getUrl();
 }

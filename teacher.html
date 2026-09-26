@@ -40,6 +40,14 @@
     padding:32px 16px;
   }
   .gate-wrap .credit{ margin:24px 0 0; }
+  /* 비밀번호 박스 위 "← 이전": 학생 조회 화면의 "← 다시 조회"와 같은 모양, 누르는 높이는 44px */
+  .gate-back-row{ width:100%; max-width:360px; margin-bottom:8px; }
+  .gate-back{
+    display:inline-flex; align-items:center; min-height:44px;
+    font-size:13.5px; font-weight:600; color: var(--ink-soft); text-decoration:none; border-radius:8px;
+  }
+  .gate-back:hover{ color: var(--purple); }
+  .gate-back:focus-visible{ outline:2px solid var(--purple); outline-offset:2px; }
   .gate-card{
     width:100%; max-width:360px; background: var(--surface); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card); padding:32px 28px; text-align:center;
@@ -640,6 +648,9 @@
 <body>
 
 <div class="gate-wrap" id="gateWrap">
+  <div class="gate-back-row">
+    <a href="index.html" target="_top" class="gate-back" id="gateBackLink">&larr; 이전</a>
+  </div>
   <div class="gate-card">
     <div class="gate-badge" aria-hidden="true">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -1423,7 +1434,8 @@ function createMockRun(){
         currentDomains: currentDomains
       };
     }); },
-    getSheetUrl: function(pw){ run(function(){ check(pw); return state.sheetUrl; }); }
+    getSheetUrl: function(pw){ run(function(){ check(pw); return state.sheetUrl; }); },
+    getWebAppUrl: function(){ run(function(){ return ''; }); }
   };
   function run(fn){
     var h = handlers; handlers = {};
@@ -1754,6 +1766,11 @@ document.getElementById('logoutBtn').addEventListener('click', function(){
 });
 
 /* ---- 0. 비밀번호 게이트 ---- */
+// "← 이전": 배포 환경에서는 학생 조회 화면이 <배포 주소>(page 없이)로 열림 (로컬 미리보기는 index.html 유지)
+gs.withSuccessHandler(function(url){
+  if (url) document.getElementById('gateBackLink').href = url;
+}).getWebAppUrl();
+
 document.getElementById('gateForm').addEventListener('submit', function(e){
   e.preventDefault();
   var btn = document.getElementById('gateBtn');
