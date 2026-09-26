@@ -315,7 +315,7 @@
     <div class="tab-card">
       <div class="tab-bar">
         <button type="button" class="tab-link active" id="studentTab" aria-selected="true">학생 조회</button>
-        <a href="teacher.html" class="tab-link" role="button">교사 관리</a>
+        <a href="teacher.html" target="_top" class="tab-link" id="teacherTab" role="button">교사 관리</a>
       </div>
     </div>
     <div class="login-card">
@@ -411,6 +411,7 @@ function createMockRun(){
     withSuccessHandler: function(fn){ handlers.success = fn; return api; },
     withFailureHandler: function(fn){ handlers.failure = fn; return api; },
     getRosterOptions: function(){ run(function(){ return MOCK_ROSTER; }); },
+    getWebAppUrl: function(){ run(function(){ return ''; }); },
     getStudentResult: function(g,c,n,name){
       run(function(){
         var key = g+'-'+c+'-'+n;
@@ -769,6 +770,11 @@ function setupCarousel(container){
 gs.withSuccessHandler(initRoster).withFailureHandler(function(){
   showError('학생 명단을 불러오지 못했습니다. 관리자에게 문의해주세요.');
 }).getRosterOptions();
+
+// 배포 환경에서는 교사 화면이 <배포 주소>?page=teacher 로 열림 (로컬 미리보기는 teacher.html 유지)
+gs.withSuccessHandler(function(url){
+  if (url) document.getElementById('teacherTab').href = url + '?page=teacher';
+}).getWebAppUrl();
 </script>
 </body>
 </html>

@@ -36,6 +36,11 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+// 학생 화면의 "교사 관리" 탭이 <배포 주소>?page=teacher 로 이동할 수 있게 배포 주소를 알려줌
+function getWebAppUrl() {
+  return ScriptApp.getService().getUrl();
+}
+
 function ensureSheets_() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var DEMO_SUBJECT = '기술·가정';
