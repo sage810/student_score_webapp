@@ -601,14 +601,14 @@
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
   .toast.error{ background: var(--red); }
 
-  /* 좁은 화면: 상단 메뉴(홈 화면)는 5열(2행) 격자로 내리고, 사이드바(섹션 화면)는 아이콘 + 짧은 이름의 레일(96px)로 바꾼다 */
+  /* 좁은 화면: 상단 메뉴(홈 화면)는 3열×3행 격자로 내리고, 사이드바(섹션 화면)는 아이콘 + 짧은 이름의 레일(96px)로 바꾼다 */
   @media (max-width: 1280px){
     .topbar{ flex-wrap:wrap; align-items:center; gap:12px; padding:16px 16px; }
     .topbar-title{ flex:1; }
     .topbar-right{ order:2; margin-left:0; }
     .topbar-nav{
       order:3; flex:0 0 100%; position:static; transform:none;
-      display:grid; grid-template-columns:repeat(5, 1fr); gap:8px 12px; justify-content:stretch;
+      display:grid; grid-template-columns:repeat(3, 1fr); gap:8px 12px; justify-content:stretch;
     }
     .topbar-nav button{ white-space:normal; word-break:keep-all; font-size:12.5px; padding:8px 4px; text-align:center; }
     .sidebar-toggle{ margin-right:0; }
@@ -624,9 +624,6 @@
     .sidebar button:hover .sb-icon{ background:#f1f1f6; }
     .sidebar button.active .sb-icon{ background:var(--purple); color:#fff; }
     .sb-divider{ margin:4px 12px; }
-  }
-  @media (max-width: 780px){
-    .topbar-nav{ grid-template-columns:repeat(3, 1fr); }
   }
   @media (prefers-reduced-motion: reduce){
     *, *::before, *::after{
