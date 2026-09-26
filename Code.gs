@@ -1049,8 +1049,8 @@ function getAbsentees(password, subject) {
   return { rows: rows, domains: domainNames };
 }
 
-// 홈 화면 상단 통계용: 맡은 과목 수 / 결시 대기(결시로 표시된 항목 수) / 이번 수행 완료율.
-// "이번 수행 완료율"은 상태가 "이번 수행"인 영역-학생 조합 중 점수가 입력된 비율이다(빈 칸·결시 제외).
+// 홈 화면 상단 통계용: 결시 대기(결시로 표시된 항목 수) / 영역 상태 관리 카드(지금 "이번 수행"인 영역 목록 + 점수 입력률).
+// performRate 는 상태가 "이번 수행"인 영역-학생 조합 중 점수가 입력된 비율이다(빈 칸·결시 제외).
 // 여러 반·영역을 한 번에 훑어야 해서 화면에서 여러 번 나눠 부르는 대신 여기서 한 번에 계산해 돌려준다.
 function getHomeStats(password) {
   var ss = ensureSheets_();
@@ -1103,10 +1103,20 @@ function getHomeStats(password) {
     });
   });
 
+  // 지금 진행 중("이번 수행")인 영역 — 과목명·영역명이 같으면 한 번만
+  var currentDomains = [];
+  subjects.forEach(function (s) {
+    getDomainsForSubject_(ss, s.id).forEach(function (d) {
+      if (d.status !== '이번 수행') return;
+      var dup = currentDomains.some(function (c) { return c.subject === s.name && c.domain === d.name; });
+      if (!dup) currentDomains.push({ subject: s.name, domain: d.name });
+    });
+  });
+
   return {
-    subjectCount: names.length,
     absentPending: absentPending,
-    performRate: performTotal ? Math.round(performDone / performTotal * 100) : null
+    performRate: performTotal ? Math.round(performDone / performTotal * 100) : null,
+    currentDomains: currentDomains
   };
 }
 
