@@ -1057,7 +1057,8 @@ function getAbsentees(password, subject) {
   return { rows: rows, domains: domainNames };
 }
 
-// 홈 화면 흐름 보드의 단계 카드에 보여줄 값: 결시 대기(결시로 표시된 항목 수) / 지금 "이번 수행"인 영역 목록 / 점수 입력률.
+// 홈 화면 흐름 보드의 단계 카드에 보여줄 값을 과목마다 계산한다 (홈에서 과목 탭을 바꾸면 그 과목의 값을 보여준다).
+// subjects: [{ subject, absentPending: 결시로 표시된 항목 수, performRate, currentDomains: 지금 "이번 수행"인 영역 이름들 }]
 // performRate 는 상태가 "이번 수행"인 영역-학생 조합 중 점수가 입력된 비율이다(빈 칸·결시 제외).
 // 여러 반·영역을 한 번에 훑어야 해서 화면에서 여러 번 나눠 부르는 대신 여기서 한 번에 계산해 돌려준다.
 function getHomeStats(password) {
@@ -1070,9 +1071,8 @@ function getHomeStats(password) {
   var roster = ss.getSheetByName('명단');
   var rosterData = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
 
-  var absentPending = 0, performTotal = 0, performDone = 0;
-
-  names.forEach(function (name) {
+  return { subjects: names.map(function (name) {
+    var absentPending = 0, performTotal = 0, performDone = 0, currentDomains = [];
     var book = readScores_(ss, name);
     var rowIndex = {};
     book.data.forEach(function (r, i) { rowIndex[r[1] + '-' + r[2] + '-' + r[3]] = i; });
@@ -1109,23 +1109,21 @@ function getHomeStats(password) {
         });
       });
     });
-  });
 
-  // 지금 진행 중("이번 수행")인 영역 — 과목명·영역명이 같으면 한 번만
-  var currentDomains = [];
-  subjects.forEach(function (s) {
-    getDomainsForSubject_(ss, s.id).forEach(function (d) {
-      if (d.status !== '이번 수행') return;
-      var dup = currentDomains.some(function (c) { return c.subject === s.name && c.domain === d.name; });
-      if (!dup) currentDomains.push({ subject: s.name, domain: d.name });
+    // 지금 진행 중("이번 수행")인 영역 — 같은 이름의 과목(학년별 ID)끼리 영역명이 같으면 한 번만
+    subjects.filter(function (s) { return s.name === name; }).forEach(function (s) {
+      getDomainsForSubject_(ss, s.id).forEach(function (d) {
+        if (d.status === '이번 수행' && currentDomains.indexOf(d.name) === -1) currentDomains.push(d.name);
+      });
     });
-  });
 
-  return {
-    absentPending: absentPending,
-    performRate: performTotal ? Math.round(performDone / performTotal * 100) : null,
-    currentDomains: currentDomains
-  };
+    return {
+      subject: name,
+      absentPending: absentPending,
+      performRate: performTotal ? Math.round(performDone / performTotal * 100) : null,
+      currentDomains: currentDomains
+    };
+  }) };
 }
 
 function getSheetUrl(password) {
