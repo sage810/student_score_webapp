@@ -75,7 +75,7 @@
   "zIndex": { "tableHead": 2, "topbar": 25, "bottomBar": 30 },
   "breakpoints": {
     "topbarCompact": "1280px 이하",
-    "topbarGrid3": "780px 이하",
+    "sidebarRail": "1280px 이하",
     "bottomBarStack": "720px 이하",
     "rowsStack": "640px 이하"
   },
