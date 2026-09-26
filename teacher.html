@@ -1653,17 +1653,30 @@ function renderHomeShell(){
       '<div class="home-phase' + (ph.loop ? ' is-loop' : '') + '"><div class="home-phase-head"><h3>' + ph.label + '</h3></div>' + cards + loopChip + '</div>';
   }).join('');
 }
-// 결시자 수행안내는 홈에서 고른 과목으로 맞추고, 수행 영역을 "전체 영역"으로 두고 결시자 불러오기까지 눌러 준다.
+// 섹션마다 과목을 고르는 칸 (학생 명단 관리·수업 과목 설정은 과목과 상관없음)
+var HOME_SUBJECT_SELECT = {
+  domains:'domainSubjectSelect', attendance:'attendanceSubjectSelect', scores:'scoreSubjectSelect',
+  compare:'compareSubjectSelect', notice:'noticeSubjectSelect', xlsxExport:'xlsxExportSubjectSelect'
+};
+// 홈 카드로 섹션을 열 때 그 섹션의 과목을 홈에서 고른 과목으로 맞춘다.
+// 과목을 바꾸면 불러온 표가 비워지므로, 저장하지 않은 변경이 있으면 먼저 물어보고 "취소"면 과목을 그대로 둔다.
+function matchSectionSubject(key){
+  var selectId = HOME_SUBJECT_SELECT[key];
+  var subject = currentHomeSubject();
+  var select = selectId && document.getElementById(selectId);
+  if (!select || !subject || select.value === subject) return;
+  if (dirty[key] && !confirm('저장하지 않은 변경이 있어요. 과목을 "' + subject + '"(으)로 바꾸면 사라져요.\n바꿀까요?')) return;
+  populateSubjectSelect(selectId, homeSubjectNames(), subject);
+  select.dispatchEvent(new Event('change', { bubbles:true }));
+}
+// 결시자 수행안내는 수행 영역을 "전체 영역"으로 두고 결시자 불러오기까지 눌러 준다.
 document.getElementById('homePhases').addEventListener('click', function(e){
   var btn = e.target.closest('.home-card');
   if (!btn) return;
-  goToSection(btn.dataset.section);
-  if (btn.dataset.section === 'notice'){
-    var subject = currentHomeSubject();
-    if (subject && subject !== selectedNoticeSubject){
-      populateSubjectSelect('noticeSubjectSelect', homeSubjectNames(), subject);
-      onNoticeSubjectChange();
-    }
+  var key = btn.dataset.section;
+  matchSectionSubject(key);
+  goToSection(key);
+  if (key === 'notice'){
     document.getElementById('noticeDomainSelect').value = '';
     document.getElementById('loadNoticeBtn').click();
   }
