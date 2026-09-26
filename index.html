@@ -44,7 +44,6 @@
   .screen{ display:none; }
   .screen.active{ display:block; animation: fadeUp .35s ease; }
 
-  .tab-card .tab-bar{ margin:0; padding:0; }
   @keyframes fadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
 
   /* 페이지 맨 아래 제작자 표시 (두 화면 공통) */
@@ -59,20 +58,18 @@
   /* ---------- 화면1: 로그인 ---------- */
   .tab-card{
     background: var(--surface);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
-    padding: 20px 28px;
-    margin-bottom: -1px;
+    padding: 8px;
+    margin-bottom: 16px;
   }
   .login-card{
     background: var(--surface);
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
-    padding: 0 28px 32px;
-    position: relative;
-    z-index: 1;
+    padding: 36px 28px 32px;
   }
-  .brand{ text-align:center; margin-top:20px; margin-bottom:28px; }
+  .brand{ text-align:center; margin-bottom:28px; }
   .brand .info-bar[hidden]{ display:none; }
   .brand .info-bar{
     display:flex; flex-direction:column; align-items:center; gap:2px;
@@ -91,17 +88,17 @@
   .brand h1{ font-size:22px; font-weight:700; margin:0 0 8px; letter-spacing:-0.3px; }
   .brand-sub{ font-size:13.5px; color:var(--ink-soft); margin:0; line-height:1.5; }
 
-  /* 탭 스타일 */
-  .tab-bar{
-    display:flex; gap:12px; margin-bottom:0; padding:0 20px;
-  }
+  /* 탭 카드 안쪽 모서리 = 카드 모서리(20px) - 안쪽 여백(8px) */
+  .tab-bar{ display:flex; gap:4px; }
   .tab-link{
-    flex:1; padding:16px 20px; border:none; background:#f0f0f5; color:var(--ink-soft);
-    border-radius:18px; font-size:15px; font-weight:700;
-    cursor:pointer; font-family:inherit; transition: all .15s ease; text-decoration:none;
-    display:flex; align-items:center; justify-content:center; gap:6px;
+    flex:1; min-height:44px; padding:12px 16px; border:none; background:transparent; color:var(--ink-soft);
+    border-radius: var(--radius-md); font-size:14px; font-weight:700;
+    cursor:pointer; font-family:inherit; text-decoration:none;
+    display:flex; align-items:center; justify-content:center;
+    transition: background .15s ease, color .15s ease;
   }
-  .tab-link:hover:not(.active){ background:#e5e5ed; }
+  .tab-link:hover:not(.active){ background:#f1f1f6; color:var(--ink); }
+  .tab-link:focus-visible{ outline:2px solid var(--purple); outline-offset:2px; }
   .tab-link.active{ background:var(--purple); color:#fff; }
 
   .field{ margin-bottom:16px; }
