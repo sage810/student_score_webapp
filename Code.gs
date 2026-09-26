@@ -12,7 +12,8 @@
  *   과목  : 과목명 | 총점 | 학년반목록 | ID  (2행부터, 최대 5개 과목. "총점"은 영역 배점 합과 별개로 선언하는 만점 — 100점이 아닐 수도 있음.
  *          "학년반목록"은 이 과목을 듣는 학년-반 조합을 "학년-반" 형식으로 세미콜론(;)으로 이어붙인 문자열. 예: "1-1;1-2;2-3"
  *          "ID"는 화면에 안 보이는 내부 식별자 — 같은 이름의 과목을 학년별로 여러 개 만들어도(예: "기술·가정"을 1학년용/2학년용 각각) 영역이 안 섞이게 해줌)
- *   진행상태 : 과목ID | 학년 | 반 | 영역명 | 메모  — 응시·결시 관리의 "영역별 메모"(반마다 따로). 영역 상태는 여기에 없고 "영역" 시트의 "상태" 열에서 관리함
+ *   영역메모 : 과목ID | 학년 | 반 | 영역명 | 메모  — 응시·결시 관리의 "영역별 메모"(반마다 따로). 영역 상태는 여기에 없고 "영역" 시트의 "상태" 열에서 관리함
+ *          (예전 이름은 "진행상태" — 그 이름의 시트가 있으면 처음 열 때 "영역메모"로 이름만 바뀌고 메모는 그대로 남음)
  *   영역  : 과목ID | 영역명 | 배점 | 그룹 | 상태  (그룹이 같으면 화면에서 한 묶음으로 표시. "과목명"이 아니라 "과목ID" 기준이라 이름이 같은 과목끼리도 안 섞임)
  *          "상태" = "완료" / "이번 수행" / "예정" (시트에서 드롭다운으로 고름, 비어 있으면 "예정"). 그 과목을 듣는 모든 반에 같은 상태가 적용됨.
  *          수행 영역 관리 화면에서 바꿔도, 시트에서 직접 바꿔도 같은 값을 쓰고, 학생 조회 화면의 "이번 수행"도 이 값을 따름
@@ -138,22 +139,28 @@ function ensureSheets_() {
     refreshTotalColumn_(score);
   }
 
-  var progress = ss.getSheetByName('진행상태');
-  if (!progress) {
-    progress = ss.insertSheet('진행상태');
-    progress.getRange('A1:E1').setValues([PROGRESS_HEADER]);
+  // 영역별 메모 시트 "영역메모". 예전 이름("진행상태")의 시트가 있으면 이름만 바꿔서 메모를 그대로 쓴다.
+  var memo = ss.getSheetByName(MEMO_SHEET);
+  var legacyMemo = ss.getSheetByName(LEGACY_MEMO_SHEET);
+  if (!memo && legacyMemo) {
+    legacyMemo.setName(MEMO_SHEET);
+    memo = legacyMemo;
+  }
+  if (!memo) {
+    memo = ss.insertSheet(MEMO_SHEET);
+    memo.getRange('A1:E1').setValues([MEMO_HEADER]);
   } else {
     // 예전 형식(과목ID | 학년 | 반 | 영역명 | 상태 [| 메모])의 반별 상태 열을 없앤다. 상태는 위의 migrateDomainStatus_ 가 이미 "영역" 시트로 옮겼다.
     // 상태만 있고 메모가 없던 행은 더 이상 필요 없으므로 함께 지운다.
-    if (String(progress.getRange(1, 5).getValue()) === '상태') {
-      progress.deleteColumn(5);
-      var pLast = progress.getLastRow();
-      var memoRows = pLast > 1 ? progress.getRange(2, 1, pLast - 1, 5).getValues().filter(function (r) { return String(r[4]).trim(); }) : [];
-      progress.clear();
-      progress.getRange(1, 1, 1, 5).setValues([PROGRESS_HEADER]);
-      if (memoRows.length) progress.getRange(2, 1, memoRows.length, 5).setValues(memoRows);
+    if (String(memo.getRange(1, 5).getValue()) === '상태') {
+      memo.deleteColumn(5);
+      var pLast = memo.getLastRow();
+      var memoRows = pLast > 1 ? memo.getRange(2, 1, pLast - 1, 5).getValues().filter(function (r) { return String(r[4]).trim(); }) : [];
+      memo.clear();
+      memo.getRange(1, 1, 1, 5).setValues([MEMO_HEADER]);
+      if (memoRows.length) memo.getRange(2, 1, memoRows.length, 5).setValues(memoRows);
     }
-    if (String(progress.getRange(1, 5).getValue()) !== '메모') progress.getRange(1, 5).setValue('메모');
+    if (String(memo.getRange(1, 5).getValue()) !== '메모') memo.getRange(1, 5).setValue('메모');
   }
 
   if (legacyCurrent.length) {
@@ -171,6 +178,9 @@ function ensureSheets_() {
 
 var DOMAIN_STATUSES = ['완료', '이번 수행', '예정'];
 var DOMAIN_HEADER = ['과목ID', '영역명', '배점', '그룹', '상태'];
+var MEMO_SHEET = '영역메모';
+var LEGACY_MEMO_SHEET = '진행상태'; // 영역메모 시트의 예전 이름 (반별 상태도 함께 들어 있던 시절)
+var MEMO_HEADER = ['과목ID', '학년', '반', '영역명', '메모'];
 
 // "영역" 시트 상태 열(E열)에 완료/이번 수행/예정 드롭다운을 건다. 시트에서 직접 고칠 때도 이 세 값만 들어가게 한다.
 function applyDomainStatusValidation_(dom) {
@@ -179,16 +189,16 @@ function applyDomainStatusValidation_(dom) {
   dom.getRange(2, 5, dom.getMaxRows() - 1, 1).setDataValidation(rule);
 }
 
-// 예전에는 영역 상태가 "진행상태" 시트에 반마다 있었다(과목ID | 학년 | 반 | 영역명 | 상태 | 메모).
+// 예전에는 영역 상태가 "진행상태"(지금의 영역메모) 시트에 반마다 있었다(과목ID | 학년 | 반 | 영역명 | 상태 | 메모).
 // 이제는 "영역" 시트의 "상태" 열 하나로 관리하므로, 그 열이 없으면 만들고 예전 값을 옮겨 온다.
 // 반마다 상태가 같았으면 그 값, 서로 달랐으면 "이번 수행", 기록이 없던 영역은 "예정"으로 옮긴다.
-// (진행상태 시트의 상태 열은 이어서 ensureSheets_ 가 지운다)
+// (그 시트의 상태 열 삭제와 "영역메모"로 이름 바꾸기는 이어서 ensureSheets_ 가 한다)
 function migrateDomainStatus_(ss, dom) {
   if (dom.getMaxColumns() < 5) dom.insertColumnsAfter(dom.getMaxColumns(), 5 - dom.getMaxColumns());
   if (String(dom.getRange(1, 5).getValue()) === '상태') return;
 
   var perDomain = {}; // "과목ID|영역명" -> [반마다의 상태]
-  var progress = ss.getSheetByName('진행상태');
+  var progress = ss.getSheetByName(MEMO_SHEET) || ss.getSheetByName(LEGACY_MEMO_SHEET);
   if (progress && String(progress.getRange(1, 5).getValue()) === '상태' && progress.getLastRow() > 1) {
     progress.getRange(2, 1, progress.getLastRow() - 1, 5).getValues().forEach(function (r) {
       if (!r[0] || !r[3] || DOMAIN_STATUSES.indexOf(String(r[4])) === -1) return;
@@ -403,11 +413,9 @@ function getAbsentSheet_(ss, subject) {
   return sheet;
 }
 
-var PROGRESS_HEADER = ['과목ID', '학년', '반', '영역명', '메모'];
-
 // 그 반의 영역별 메모를 { 영역명: 메모 } 로 읽는다.
 function readClassMemos_(ss, subjectId, grade, cls) {
-  var sheet = ss.getSheetByName('진행상태');
+  var sheet = ss.getSheetByName(MEMO_SHEET);
   var memos = {};
   var lastRow = sheet.getLastRow();
   if (lastRow < 2 || !subjectId) return memos;
@@ -423,7 +431,7 @@ function readClassMemos_(ss, subjectId, grade, cls) {
 function saveClassMemos_(ss, subjectId, grade, cls, memos) {
   if (!subjectId || !grade || !cls) return;
   memos = memos || {};
-  var sheet = ss.getSheetByName('진행상태');
+  var sheet = ss.getSheetByName(MEMO_SHEET);
   var lastRow = sheet.getLastRow();
   var data = lastRow > 1 ? sheet.getRange(2, 1, lastRow - 1, 5).getValues() : [];
   var others = data.filter(function (r) {
@@ -434,7 +442,7 @@ function saveClassMemos_(ss, subjectId, grade, cls, memos) {
     .map(function (name) { return [subjectId, grade, cls, name, String(memos[name]).trim()]; });
   var all = others.concat(newRows);
   sheet.clear();
-  sheet.getRange(1, 1, 1, 5).setValues([PROGRESS_HEADER]);
+  sheet.getRange(1, 1, 1, 5).setValues([MEMO_HEADER]);
   if (all.length) sheet.getRange(2, 1, all.length, 5).setValues(all);
 }
 
@@ -915,7 +923,7 @@ function getAttendanceForClass(password, subject, grade, cls) {
   return { domains: domains, students: students, memos: memos, statuses: statuses };
 }
 
-// memos: 그 반의 영역별 메모 { 영역명: 글 } — "진행상태" 시트의 메모 열에 저장된다. (영역 상태는 saveDomains 로 "영역" 시트에 저장)
+// memos: 그 반의 영역별 메모 { 영역명: 글 } — "영역메모" 시트에 저장된다. (영역 상태는 saveDomains 로 "영역" 시트에 저장)
 function saveAttendanceForClass(password, subject, grade, cls, students, memos) {
   var ss = ensureSheets_();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
