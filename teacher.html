@@ -84,9 +84,11 @@
   }
   .topbar h1{ font-size:16px; font-weight:700; margin:0; }
 
+  /* 제목 오른쪽 끝(약 157px)과 "홈" 사이 여백이 가운데 정렬일 때의 1/2이 되도록 배치
+     (왼쪽 끝 = 가운데 정렬 위치와 제목 오른쪽 끝의 중간 = 25% + 157px/2 - 메뉴 폭의 25%) */
   .topbar-nav{
     display:flex; gap:20px; flex-wrap:nowrap; justify-content:center;
-    position:absolute; left:50%; top:50%; transform:translate(-50%, -50%);
+    position:absolute; left:calc(25% + 78px); top:50%; transform:translate(-25%, -50%);
   }
   .topbar-nav button{
     padding:2px 0; border:none; background:none;
