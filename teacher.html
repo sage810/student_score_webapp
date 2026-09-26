@@ -1595,6 +1595,8 @@ function goToSection(key){
 function setSectionOpen(key, isOpen){
   sectionEls[key].body.hidden = !isOpen;
   sectionEls[key].headBtn.classList.toggle('open', isOpen);
+  // 사이드바에서는 마지막으로 연 영역 하나만 선택된 것으로 표시 (앞서 연 영역이 펼쳐져 있어도 선택 표시는 뺌)
+  if (isOpen) SECTION_KEYS.forEach(function(k){ if (sectionEls[k].navBtn) sectionEls[k].navBtn.classList.remove('active'); });
   if (sectionEls[key].navBtn) sectionEls[key].navBtn.classList.toggle('active', isOpen);
   if (isOpen && key === 'domains') autosizeAllDomainTextareas();
 }
