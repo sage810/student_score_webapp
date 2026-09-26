@@ -189,19 +189,15 @@
   .home-phase.is-loop{ background:rgba(133,91,251,0.10); } /* 진행: 수행평가마다 반복되는 칸 */
   .home-phase:nth-child(3){ animation-delay:60ms; }
   .home-phase:nth-child(5){ animation-delay:120ms; }
-  /* 칸 제목은 가운데 정렬. "진행"만 아래에 반복 표시가 붙으므로, 세 칸의 첫 카드 높이가 맞도록 제목 영역 높이를 같게 둔다 */
-  .home-phase-head{ display:flex; flex-direction:column; align-items:center; gap:4px; min-height:56px; padding:4px 4px 8px; text-align:center; }
+  .home-phase-head{ padding:4px 4px 8px; text-align:center; }
   .home-phase-head h3{ margin:0; font-size:15px; font-weight:800; }
+  /* 진행 칸 카드들 아래: 수행평가마다 반복된다는 표시 */
+  .home-loop-row{ display:flex; justify-content:center; margin-top:8px; }
   .home-phase-loop{
     display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px;
     background:var(--purple); color:#fff; font-size:12px; font-weight:700;
   }
-  .home-phase-loop svg, .home-loop-note svg{ width:13px; height:13px; flex-shrink:0; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
-  .home-loop-note{
-    display:flex; align-items:center; justify-content:center; gap:6px; margin-top:8px; padding:8px 12px;
-    border:1.5px dashed rgba(113,50,245,0.4); border-radius:12px;
-    font-size:12px; font-weight:600; color:var(--purple-dark); text-align:center; word-break:keep-all;
-  }
+  .home-phase-loop svg{ width:13px; height:13px; flex-shrink:0; stroke:currentColor; fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
   .home-step-down{ display:flex; justify-content:center; color:#9a9cb0; }
   .home-step-down svg{ width:16px; height:16px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 
@@ -1620,10 +1616,9 @@ function renderHomeShell(){
         '<span class="home-card-status" id="homeStatus-' + s.key + '"></span>' +
       '</button>';
     }).join('<span class="home-step-down">' + HOME_SVG.down + '</span>');
-    var loopChip = ph.loop ? '<span class="home-phase-loop">' + HOME_SVG.loop + '수행평가마다 반복</span>' : '';
-    var loopNote = ph.loop ? '<div class="home-loop-note">' + HOME_SVG.loop + '다음 수행평가도 4 → 5 반복</div>' : '';
+    var loopChip = ph.loop ? '<div class="home-loop-row"><span class="home-phase-loop">' + HOME_SVG.loop + '수행평가마다 반복</span></div>' : '';
     return (pi ? '<div class="home-flow-arrow">' + HOME_SVG.right + '</div>' : '') +
-      '<div class="home-phase' + (ph.loop ? ' is-loop' : '') + '"><div class="home-phase-head"><h3>' + ph.label + '</h3>' + loopChip + '</div>' + cards + loopNote + '</div>';
+      '<div class="home-phase' + (ph.loop ? ' is-loop' : '') + '"><div class="home-phase-head"><h3>' + ph.label + '</h3></div>' + cards + loopChip + '</div>';
   }).join('');
 }
 // 결시자 수행안내는 수행 영역을 "전체 영역"으로 두고 결시자 불러오기까지 눌러 준다.
