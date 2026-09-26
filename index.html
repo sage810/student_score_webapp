@@ -45,8 +45,8 @@
   .screen.active{ display:block; animation: fadeUp .35s ease; }
 
   #screen-login{ position:relative; }
-  #screen-login .tab-bar{ position:relative; z-index:10; margin-bottom:-20px; padding:0 20px; }
-  #screen-login .login-card{ position:relative; z-index:1; margin-top:0; padding-top:36px; }
+  #screen-login .tab-bar{ position:relative; z-index:10; margin-bottom:-19px; padding:0 28px; }
+  #screen-login .login-card{ position:relative; z-index:1; }
   @keyframes fadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
 
   /* 페이지 맨 아래 제작자 표시 (두 화면 공통) */
@@ -63,9 +63,10 @@
     background: var(--surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
-    padding: 36px 28px 32px;
+    padding: 0 28px 32px;
+    margin-top: -1px;
   }
-  .brand{ text-align:center; margin-bottom:28px; }
+  .brand{ text-align:center; margin-top:36px; margin-bottom:28px; }
   .brand .info-bar[hidden]{ display:none; }
   .brand .info-bar{
     display:flex; flex-direction:column; align-items:center; gap:2px;
