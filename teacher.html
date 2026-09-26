@@ -621,31 +621,22 @@
     }
     .topbar-nav button{ white-space:normal; word-break:keep-all; font-size:12.5px; padding:8px 4px; text-align:center; }
 
-    /* 도크: 스크롤 없이 상단 바 아래 영역의 세로 가운데에 고정. 메뉴 이름은 마우스를 올리거나 키보드로 고르면 말풍선으로 보임 */
+    /* 도크: 아이콘 + 메뉴 이름을 담은 떠 있는 카드. 스크롤 없이 상단 바 아래 영역의 세로 가운데에 고정 */
     .sidebar{
       position:fixed; left:12px; top:calc((100vh + var(--topbar-h, 84px)) / 2); transform:translateY(-50%); z-index:21;
-      width:60px; height:auto; padding:8px; overflow:visible;
+      width:192px; height:auto; padding:8px; overflow:visible;
       border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:0 8px 28px rgba(16,17,20,0.10);
     }
-    .sidebar button{ position:relative; width:42px; height:44px; min-height:0; padding:0; justify-content:center; color:var(--ink-soft); }
-    .sidebar button:hover:not(.active){ background:#f1f1f6; color:var(--ink); }
+    .sidebar button{ white-space:nowrap; }
     .sidebar button.active{ background:var(--purple); color:#fff; }
     .sb-icon{ display:inline-flex; }
-    .sb-label{
-      position:absolute; left:calc(100% + 16px); top:50%; transform:translateY(-50%);
-      padding:8px 12px; border-radius:8px; background:var(--ink); color:#fff;
-      font-size:12.5px; font-weight:600; white-space:nowrap; pointer-events:none;
-      opacity:0; transition: opacity .15s ease;
-    }
-    .sb-label::before{
-      content:''; position:absolute; right:100%; top:50%; transform:translateY(-50%);
-      border:6px solid transparent; border-right-color:var(--ink);
-    }
-    .sidebar button:hover .sb-label, .sidebar button:focus-visible .sb-label{ opacity:1; }
-    .sb-divider{ margin:4px 6px; }
-    .sidebar-handle{ left:71px; }
-    /* 본문 왼쪽 여백이 도크(오른쪽 끝 72px)보다 좁아지면, 본문을 도크 오른쪽으로 비켜 준다 */
-    #dashboard.on-section:not(.sidebar-closed) .wrap{ padding-left:clamp(20px, calc(84px - (100% - 980px) / 2), 84px); }
+    .sb-divider{ margin:4px 12px; }
+    .sidebar-handle{ left:203px; }
+  }
+  /* 본문 왼쪽 여백이 도크(오른쪽 끝 204px)보다 좁아지면, 본문을 도크 오른쪽으로 비켜 준다.
+     휴대폰 폭(640px 이하)에서는 본문이 너무 좁아지므로 비키지 않고, 도크가 본문 위에 떠 있다가 손잡이로 닫는다 */
+  @media (min-width: 641px) and (max-width: 1280px){
+    #dashboard.on-section:not(.sidebar-closed) .wrap{ padding-left:clamp(20px, calc(216px - (100% - 980px) / 2), 216px); }
   }
   @media (prefers-reduced-motion: reduce){
     *, *::before, *::after{
