@@ -44,9 +44,7 @@
   .screen{ display:none; }
   .screen.active{ display:block; animation: fadeUp .35s ease; }
 
-  #screen-login{ position:relative; }
-  #screen-login .tab-bar{ position:relative; z-index:10; margin-bottom:-48px; padding:0 28px; }
-  #screen-login .login-card{ position:relative; z-index:1; }
+  .login-card .tab-bar{ margin-bottom:20px; }
   @keyframes fadeUp{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
 
   /* 페이지 맨 아래 제작자 표시 (두 화면 공통) */
@@ -63,10 +61,9 @@
     background: var(--surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
-    padding: 0 28px 32px;
-    margin-top: -1px;
+    padding: 20px 28px 32px;
   }
-  .brand{ text-align:center; margin-top:36px; margin-bottom:28px; }
+  .brand{ text-align:center; margin-bottom:28px; }
   .brand .info-bar[hidden]{ display:none; }
   .brand .info-bar{
     display:flex; flex-direction:column; align-items:center; gap:2px;
@@ -309,11 +306,11 @@
 <div class="app">
 
   <section id="screen-login" class="screen active">
-    <div class="tab-bar">
-      <button type="button" class="tab-link active" id="studentTab" aria-selected="true">학생 조회</button>
-      <a href="teacher.html" class="tab-link" role="button">교사 관리</a>
-    </div>
     <div class="login-card">
+      <div class="tab-bar">
+        <button type="button" class="tab-link active" id="studentTab" aria-selected="true">학생 조회</button>
+        <a href="teacher.html" class="tab-link" role="button">교사 관리</a>
+      </div>
       <div class="brand">
         <span class="brand-badge" aria-hidden="true">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
