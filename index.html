@@ -63,19 +63,9 @@
     background: var(--surface);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
-    padding: 0 28px 32px;
+    padding: 36px 28px 32px;
   }
-  .login-card > .info-bar[hidden]{ display:none; }
-  .login-card > .info-bar{
-    display:flex; flex-direction:column; align-items:center; gap:2px;
-    width:fit-content; margin:24px auto 20px;
-    padding:8px 16px; background: var(--purple-tint); border-radius:14px;
-    color: var(--purple-dark);
-  }
-  .login-card > .info-bar .line1{ font-size:12px; font-weight:600; }
-  .login-card > .info-bar .line2{ font-size:13px; font-weight:800; }
-  .login-card > .info-bar .line2[hidden]{ display:none; }
-  .brand{ text-align:center; margin-bottom:28px; margin-top:0; }
+  .brand{ text-align:center; margin-bottom:28px; }
   .brand .info-bar[hidden]{ display:none; }
   .brand .info-bar{
     display:flex; flex-direction:column; align-items:center; gap:2px;
@@ -320,10 +310,6 @@
 
   <section id="screen-login" class="screen active">
     <div class="login-card">
-      <div class="info-bar" id="loginInfoBar" hidden>
-        <div class="line1" id="loginInfoCaption">-</div>
-        <div class="line2" id="loginInfoSubject">-</div>
-      </div>
       <div class="brand">
         <span class="brand-badge" aria-hidden="true">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -333,6 +319,10 @@
             <path d="M8 16.5h8" stroke="#7132f5" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
         </span>
+        <div class="info-bar" id="loginInfoBar" hidden>
+          <div class="line1" id="loginInfoCaption">-</div>
+          <div class="line2" id="loginInfoSubject">-</div>
+        </div>
         <h1>수행평가 조회</h1>
         <p class="brand-sub">학년·반·번호와 이름을 입력하면<br/>내 수행평가 결과를 확인할 수 있어요</p>
       </div>
