@@ -84,9 +84,25 @@
   }
   .topbar h1{ font-size:16px; font-weight:700; margin:0; }
 
+  /* 상단 메뉴: 홈 화면에서만 보임 (섹션 화면에서는 좌측 사이드바가 대신함)
+     제목 오른쪽 끝(약 157px)과 "홈" 사이 여백이 가운데 정렬일 때의 1/2이 되도록 배치
+     (왼쪽 끝 = 가운데 정렬 위치와 제목 오른쪽 끝의 중간 = 25% + 157px/2 - 메뉴 폭의 25%) */
+  .topbar-nav{
+    display:flex; gap:20px; flex-wrap:nowrap; justify-content:center;
+    position:absolute; left:calc(25% + 78px); top:50%; transform:translate(-25%, -50%);
+  }
+  .topbar-nav button{
+    padding:2px 0; border:none; background:none;
+    color:rgba(255,255,255,0.6);
+    font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; white-space:nowrap;
+  }
+  .topbar-nav button:hover{ color:#fff; }
+  .topbar-nav button.active{ color:#fff; font-weight:700; }
+  #dashboard.on-section .topbar-nav{ display:none; }
+
   /* ============ 좌측 사이드바 ============
      섹션 화면에서만 보이고 홈 화면에서는 숨김. 상단 바의 버튼으로 열고 닫을 수 있음.
-     넓은 화면 = 단계별 번호 목록(248px), 1280px 이하 = 아이콘 레일(96px) */
+     넓은 화면 = 메뉴 이름 목록(248px), 1280px 이하 = 아이콘 레일(96px) */
   .dash-body{ display:flex; align-items:flex-start; }
   .dash-body > .wrap{ flex:1 1 0; min-width:0; }
   .sidebar-toggle, .sidebar{ display:none; }
@@ -118,17 +134,9 @@
   .sidebar button:focus-visible{ outline:2px solid var(--purple); outline-offset:-2px; }
   .sidebar button.active{ background:var(--purple-tint); color:var(--purple-dark); font-weight:700; }
   .sidebar .sb-home{ color:var(--ink-soft); font-weight:700; }
-  .sb-no{
-    width:22px; height:22px; flex-shrink:0; border-radius:7px; background:#f1f1f6; color:var(--ink-soft);
-    font-size:12px; font-weight:800; display:inline-flex; align-items:center; justify-content:center;
-  }
-  .sidebar button.active .sb-no{ background:var(--purple); color:#fff; }
+  .sb-divider{ height:1px; margin:8px 12px; background:var(--border); }
   .sb-icon{ display:none; align-items:center; justify-content:center; flex-shrink:0; }
-  .sb-home .sb-icon{ display:inline-flex; }
-  .sb-icon svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; display:block; }
-  .sb-group{ display:flex; align-items:baseline; gap:8px; padding:16px 12px 4px; font-size:12px; font-weight:800; }
-  .sb-home + .sb-group{ margin-top:8px; border-top:1px solid var(--border); }
-  .sb-group-desc{ font-weight:500; color:var(--ink-soft); }
+  .sb-icon svg{ width:20px; height:20px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; display:block; }
 
   .wrap{ max-width: 980px; margin: 0 auto; padding: 24px 20px 40px; }
 
@@ -593,11 +601,16 @@
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
   .toast.error{ background: var(--red); }
 
-  /* 좁은 화면: 상단 바 여백을 줄이고, 사이드바는 아이콘 + 짧은 이름의 레일(96px)로 바꾼다 */
+  /* 좁은 화면: 상단 메뉴(홈 화면)는 5열(2행) 격자로 내리고, 사이드바(섹션 화면)는 아이콘 + 짧은 이름의 레일(96px)로 바꾼다 */
   @media (max-width: 1280px){
     .topbar{ flex-wrap:wrap; align-items:center; gap:12px; padding:16px 16px; }
     .topbar-title{ flex:1; }
     .topbar-right{ order:2; margin-left:0; }
+    .topbar-nav{
+      order:3; flex:0 0 100%; position:static; transform:none;
+      display:grid; grid-template-columns:repeat(5, 1fr); gap:8px 12px; justify-content:stretch;
+    }
+    .topbar-nav button{ white-space:normal; word-break:keep-all; font-size:12.5px; padding:8px 4px; text-align:center; }
     .sidebar-toggle{ margin-right:0; }
 
     .sidebar{ width:96px; padding:12px 8px; }
@@ -607,14 +620,13 @@
     }
     .sidebar button:hover, .sidebar button.active{ background:transparent; }
     .sidebar button.active{ color:var(--purple-dark); }
-    .sb-no{ display:none; }
     .sb-icon{ display:inline-flex; width:48px; height:28px; border-radius:999px; transition: background .15s ease; }
-    .sb-icon svg{ width:20px; height:20px; }
     .sidebar button:hover .sb-icon{ background:#f1f1f6; }
     .sidebar button.active .sb-icon{ background:var(--purple); color:#fff; }
-    .sb-group{ height:1px; padding:0; margin:4px 12px; background:var(--border); }
-    .sb-group > *{ display:none; }
-    .sb-home + .sb-group{ margin-top:4px; border-top:none; }
+    .sb-divider{ margin:4px 12px; }
+  }
+  @media (max-width: 780px){
+    .topbar-nav{ grid-template-columns:repeat(3, 1fr); }
   }
   @media (prefers-reduced-motion: reduce){
     *, *::before, *::after{
@@ -674,6 +686,17 @@
     </span>
     <h1>수행평가 관리</h1>
   </div>
+  <div class="topbar-nav">
+    <button type="button" data-section="home">홈</button>
+    <button type="button" data-section="roster">학생 명단 관리</button>
+    <button type="button" data-section="config">수업 과목 설정</button>
+    <button type="button" data-section="domains">수행 영역 관리</button>
+    <button type="button" data-section="attendance">응시·결시 관리</button>
+    <button type="button" data-section="scores">반별 점수 입력 표</button>
+    <button type="button" data-section="compare">데이터 비교</button>
+    <button type="button" data-section="notice">결시자 수행안내</button>
+    <button type="button" data-section="xlsxExport">엑셀 파일 다운로드</button>
+  </div>
   <div class="topbar-right">
     <button type="button" class="topbar-sheet-btn" id="openSheetBtn">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -693,46 +716,36 @@
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 10.5 12 4l8.5 6.5"/><path d="M5.5 9v10.5a1 1 0 0 0 1 1H10v-5.5h4v5.5h3.5a1 1 0 0 0 1-1V9"/></svg></span>
     <span class="sb-label">홈</span>
   </button>
-  <div class="sb-group"><span>준비</span><span class="sb-group-desc">과목·학생·영역 설정</span></div>
+  <div class="sb-divider" aria-hidden="true"></div>
   <button type="button" data-section="roster">
-    <span class="sb-no">1</span>
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 20v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 5 18.5V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M19 20v-1.5a3.5 3.5 0 0 0-2.5-3.36"/><path d="M14.5 4.13a3.5 3.5 0 0 1 0 6.74"/></svg></span>
     <span class="sb-label">학생 명단 관리</span>
   </button>
   <button type="button" data-section="config">
-    <span class="sb-no">2</span>
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16.5A1.5 1.5 0 0 1 18.5 21H6.5A2.5 2.5 0 0 1 4 18.5v-13Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/><path d="M8 7.5h8M8 10.5h5"/></svg></span>
     <span class="sb-label">수업 과목 설정</span>
   </button>
   <button type="button" data-section="domains">
-    <span class="sb-no">3</span>
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="0.8" fill="currentColor" stroke="none"/></svg></span>
     <span class="sb-label">수행 영역 관리</span>
   </button>
-  <div class="sb-group"><span>진행</span><span class="sb-group-desc">출결·점수 입력</span></div>
   <button type="button" data-section="attendance">
-    <span class="sb-no">4</span>
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/><path d="M8.5 14l2.2 2.2L15.5 12"/></svg></span>
     <span class="sb-label">응시·결시 관리</span>
   </button>
   <button type="button" data-section="scores">
-    <span class="sb-no">5</span>
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17M9.5 9.5V19.5"/><path d="M12.5 13.5h4.5M12.5 16.5h4.5"/></svg></span>
     <span class="sb-label">반별 점수 입력 표</span>
   </button>
-  <div class="sb-group"><span>확인·출력</span><span class="sb-group-desc">비교·안내·제출</span></div>
   <button type="button" data-section="compare">
-    <span class="sb-no">6</span>
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span>
     <span class="sb-label">데이터 비교</span>
   </button>
   <button type="button" data-section="notice">
-    <span class="sb-no">7</span>
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 7l8 6 8-6"/></svg></span>
     <span class="sb-label">결시자 수행안내</span>
   </button>
   <button type="button" data-section="xlsxExport">
-    <span class="sb-no">8</span>
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M8 11l4 4 4-4"/><path d="M4.5 16v2.5A2 2 0 0 0 6.5 20.5h11a2 2 0 0 0 2-2V16"/></svg></span>
     <span class="sb-label">엑셀 파일 다운로드</span>
   </button>
@@ -1552,7 +1565,7 @@ function setupAccordion(){
     };
     sectionEls[key].headBtn.addEventListener('click', function(){ toggleSection(key); });
   });
-  document.querySelectorAll('.sidebar button').forEach(function(btn){
+  document.querySelectorAll('.topbar-nav button, .sidebar button').forEach(function(btn){
     btn.addEventListener('click', function(){
       if (btn.dataset.section === 'home'){ showHome(); return; }
       goToSection(btn.dataset.section);
@@ -1563,7 +1576,7 @@ function setupAccordion(){
 function goToSection(key){
   document.getElementById('homeView').hidden = true;
   document.getElementById('dashboard').classList.add('on-section');
-  document.querySelector('.sidebar button[data-section="home"]').classList.remove('active');
+  document.querySelector('.topbar-nav button[data-section="home"]').classList.remove('active');
   SECTION_KEYS.forEach(function(k){ document.getElementById('section-' + k).hidden = false; });
   setSectionOpen(key, true);
   document.getElementById('section-' + key).scrollIntoView({ behavior:'smooth', block:'start' });
@@ -1674,7 +1687,7 @@ function showHome(){
     if (sectionEls[key].navBtn) sectionEls[key].navBtn.classList.remove('active');
   });
   document.getElementById('dashboard').classList.remove('on-section');
-  document.querySelector('.sidebar button[data-section="home"]').classList.add('active');
+  document.querySelector('.topbar-nav button[data-section="home"]').classList.add('active');
   window.scrollTo({ top:0, behavior:'smooth' });
   refreshHomeGreeting();
   loadHomeStats();
