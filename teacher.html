@@ -238,7 +238,7 @@
   .home-card-title{ flex:1; min-width:0; font-size:14px; font-weight:700; line-height:1.3; }
   .home-card-icon{ width:18px; height:18px; flex-shrink:0; color:var(--purple-dark); stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .home-card-desc{ font-size:12.5px; color:var(--ink-soft); line-height:1.5; }
-  /* 카드 안 현재 상황 (홈 통계): 이번 수행 영역 / 결시 건수 / 점수 입력률 */
+  /* 카드 안 현재 상황 (홈 통계): 이번 수행 영역 / 결시 건수 */
   .home-card-status:empty{ display:none; }
   .home-card-status{ display:flex; flex-wrap:wrap; gap:6px; }
   .home-chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:700; }
@@ -246,9 +246,6 @@
   .home-chip.is-current b{ padding:2px 8px; border-radius:999px; background:var(--purple); color:#fff; font-weight:700; }
   .home-chip.is-absent{ background:var(--red-tint); color:var(--red); }
   .home-chip.is-muted{ background:#f1f1f6; color:var(--ink-soft); }
-  .home-progress{ display:flex; align-items:center; gap:8px; width:100%; font-size:12px; font-weight:700; color:var(--purple-dark); }
-  .home-progress-bar{ flex:1; height:6px; border-radius:999px; background:#f1f1f6; overflow:hidden; }
-  .home-progress-bar span{ display:block; height:100%; background:var(--purple); }
   /* 본문 폭이 좁으면 세 칸을 위아래로 쌓고, 칸 사이 화살표도 아래 방향으로 */
   @media (max-width:1000px){
     .home-flow{ grid-template-columns:minmax(0,1fr); }
@@ -1423,7 +1420,7 @@ function createMockRun(){
       rows.forEach(function(r){ if (domains.indexOf(r.domain) === -1) domains.push(r.domain); });
       return { rows: rows, domains: domains };
     }); },
-    // 홈 화면 통계: 맡은 과목 수 / 결시 대기 / 이번 수행 완료율(상태가 "이번 수행"인 영역-학생 중 점수 입력된 비율).
+    // 홈 화면 통계: 과목마다 결시 대기 건수 / 지금 "이번 수행"인 영역
     getHomeStats: function(pw){ run(function(){
       check(pw);
       var names = [];
@@ -1431,7 +1428,7 @@ function createMockRun(){
 
       // Code.gs 의 getHomeStats 처럼 과목마다 따로 계산한다
       return { subjects: names.map(function(name){
-        var absentPending = 0, performTotal = 0, performDone = 0, currentDomains = [];
+        var absentPending = 0, currentDomains = [];
         var seen = {};
         state.subjects.filter(function(s){ return s.name === name; }).forEach(function(s){
           subjectClasses(s).forEach(function(p){
@@ -1441,17 +1438,9 @@ function createMockRun(){
             var inst = resolveSubjectInstance(name, p.grade, p.cls);
             if (!inst) return;
             var students = studentsFor(name, key, inst);
-            var statuses = domainStatusesOf(inst);
             inst.domains.forEach(function(d){
-              var isCurrent = statuses[d.name] === '이번 수행';
               students.forEach(function(stu){
-                var raw = stu.scores[d.name];
-                var absent = isAbsentValue(raw);
-                if (absent) absentPending++;
-                if (isCurrent){
-                  performTotal++;
-                  if (raw !== undefined && raw !== '' && !absent) performDone++;
-                }
+                if (isAbsentValue(stu.scores[d.name])) absentPending++;
               });
             });
           });
@@ -1461,11 +1450,7 @@ function createMockRun(){
             if (d.status === '이번 수행' && currentDomains.indexOf(d.name) === -1) currentDomains.push(d.name);
           });
         });
-        return {
-          subject: name, absentPending: absentPending,
-          performRate: performTotal ? Math.round(performDone/performTotal*100) : null,
-          currentDomains: currentDomains
-        };
+        return { subject: name, absentPending: absentPending, currentDomains: currentDomains };
       }) };
     }); },
     getSheetUrl: function(pw){ run(function(){ check(pw); return state.sheetUrl; }); },
@@ -1756,7 +1741,7 @@ document.getElementById('homeSubjectPills').addEventListener('click', function(e
   refreshHomeGreeting();
 });
 
-// 고른 과목의 값을 단계 카드 안에 보여준다: 3 수행 영역 관리 = 지금 "이번 수행"인 영역, 4·7 = 결시 건수, 5 = 점수 입력률
+// 고른 과목의 값을 단계 카드 안에 보여준다: 3 수행 영역 관리 = 지금 "이번 수행"인 영역, 4·7 = 결시 건수
 function setHomeStatus(key, html){ document.getElementById('homeStatus-' + key).innerHTML = html; }
 function clearHomeStatus(){
   HOME_SECTIONS.forEach(function(s){ setHomeStatus(s.key, ''); });
@@ -1770,8 +1755,6 @@ function renderHomeStatus(){
     : '<span class="home-chip is-muted">이번 수행 영역 없음</span>');
   setHomeStatus('attendance', stats.absentPending > 0 ? '<span class="home-chip is-absent">결시 ' + stats.absentPending + '건</span>' : '');
   setHomeStatus('notice', stats.absentPending > 0 ? '<span class="home-chip is-absent">결시 ' + stats.absentPending + '건 · 안내장 필요</span>' : '');
-  setHomeStatus('scores', stats.performRate === null ? '' :
-    '<span class="home-progress"><span class="home-progress-bar"><span style="width:' + stats.performRate + '%"></span></span>점수 입력 ' + stats.performRate + '%</span>');
 }
 function loadHomeStats(){
   homeStatsCache = null;
