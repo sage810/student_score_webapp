@@ -398,6 +398,7 @@
   .domain-row .domain-name-input{ flex:1 1 0; min-width:0; }
   .domain-row .domain-name-input::placeholder{ font-style:italic; }
   .domain-row .domain-max-input{ width:76px; flex-shrink:0; }
+  .domain-row .domain-step-select{ width:76px; flex-shrink:0; padding-left:8px; padding-right:4px; }
   .domain-row .domain-group-input{ flex:1 1 0; min-width:0; }
   .domain-row-labels{ display:flex; gap:8px; margin-bottom:2px; }
   .domain-row-labels span{ font-size:12px; font-weight:600; color:var(--ink-soft); }
@@ -408,7 +409,7 @@
   select[data-status="이번 수행"]{ background:var(--purple); border-color:var(--purple-dark); color:#fff; }
   select[data-status="예정"]{ background:#f1f1f6; border-color:var(--border); color:var(--ink-soft); }
   .domain-row-labels .lbl-name{ flex:1 1 0; }
-  .domain-row-labels .lbl-max{ width:76px; flex-shrink:0; }
+  .domain-row-labels .lbl-max, .domain-row-labels .lbl-step{ width:76px; flex-shrink:0; }
   .domain-row-labels .lbl-group{ flex:1 1 0; }
   /* 영역 상태: 영역명 왼쪽. 학년 단위로 정하고 그 학년의 모든 반에 똑같이 저장된다 */
   .domain-row .domain-status-select, .domain-row-labels .lbl-status{ width:120px; flex-shrink:0; }
@@ -600,6 +601,11 @@
   td.score-cell input::-webkit-outer-spin-button,
   td.score-cell input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
   td.score-cell input[type="number"]{ -moz-appearance:textfield; appearance:textfield; }
+  /* 급간이 있는 영역은 드롭다운으로 고르고, "직접 입력"을 고르면 같은 칸이 숫자 입력칸으로 바뀐다 */
+  td.score-cell select{ width:100%; min-width:0; padding:8px 0; text-align:center; text-align-last:center; cursor:pointer; }
+  td.score-cell select[hidden], td.score-cell input[hidden]{ display:none; }
+  td.score-cell.absent-cell select{ color: var(--red); font-weight:700; }
+  td.score-cell.absent-cell select option{ color: var(--ink); font-weight:400; }
   .empty-state{
     text-align:center; padding:40px 20px; color:var(--ink-soft); font-size:13.5px;
   }
@@ -864,6 +870,7 @@
         <span class="lbl-group">영역명</span>
         <span class="lbl-name">하위 영역명</span>
         <span class="lbl-max">배점</span>
+        <span class="lbl-step">급간</span>
         <span style="width:44px;"></span>
       </div>
       <div class="domain-list" id="domainList"></div>
@@ -1281,7 +1288,7 @@ function createMockRun(){
       check(pw);
       var s = findSubjectById(subjectId);
       if (s) s.domains = domains.map(function(d){
-        return { name:d.name, max:d.max, group:d.group, status: DOMAIN_STATUSES.indexOf(d.status) !== -1 ? d.status : '예정' };
+        return { name:d.name, max:d.max, group:d.group, step:Number(d.step) || 0, status: DOMAIN_STATUSES.indexOf(d.status) !== -1 ? d.status : '예정' };
       });
       return {ok:true};
     }); },
@@ -2631,6 +2638,10 @@ function addDomainRow(d){
     '<textarea class="domain-group-input" rows="1" aria-label="영역명" placeholder="예: 청소년의 건강한 식생활 제안하기">' + escapeHtml(displayGroup) + '</textarea>' +
     '<textarea class="domain-name-input" rows="1" aria-label="하위 영역명" placeholder="없으면 비워두기">' + escapeHtml(displaySub) + '</textarea>' +
     '<input type="number" class="domain-max-input" aria-label="배점" min="0" value="' + (d.max === '' || d.max === undefined ? '' : d.max) + '" placeholder="점수" />' +
+    '<select class="domain-step-select" aria-label="급간">' +
+      '<option value="">-</option>' +
+      [1,2,3,4,5,6,7,8,9,10].map(function(n){ return '<option value="' + n + '"' + (Number(d.step) === n ? ' selected' : '') + '>' + n + '</option>'; }).join('') +
+    '</select>' +
     '<button type="button" class="domain-del" title="삭제">×</button>';
   row.querySelector('.domain-del').addEventListener('click', function(){
     row.remove();
@@ -2688,6 +2699,7 @@ document.getElementById('saveDomainsBtn').addEventListener('click', function(){
     return {
       name: name,
       max: Number(row.querySelector('.domain-max-input').value) || 0,
+      step: Number(row.querySelector('.domain-step-select').value) || 0,
       group: group,
       status: row.querySelector('.domain-status-select').value
     };
@@ -3141,6 +3153,36 @@ function updateAverages(){
   foot.innerHTML = '<tr><td colspan="2">평균</td>' + cells + '<td class="total-cell">' + averageOf(totals) + '</td></tr>';
 }
 
+// 급간이 있는 영역의 점수 선택지: 배점부터 급간만큼 내려가며 배점의 40%까지 (배점 20·급간 2 → 20 18 16 14 12 10 8).
+// 급간이 없거나 배점이 0이면 null — 그 칸은 드롭다운 없이 숫자를 직접 입력한다.
+var SCORE_OTHER = '__other';
+function scoreOptions(max, step){
+  max = Number(max); step = Number(step);
+  if (!(max > 0) || !(step >= 1)) return null;
+  var list = [];
+  for (var v = max; v >= max * 0.4 - 1e-9; v -= step) list.push(Math.round(v * 100) / 100);
+  return list;
+}
+function scoreCellHtml(stu, d, v, absent){
+  var label = escapeHtml(stu.name) + ' ' + escapeHtml(d.name) + ' 점수' + (absent ? ' (결시 — 입력하면 결시가 풀려요)' : '');
+  var opts = scoreOptions(d.max, d.step);
+  var val = absent || v === '' || v == null ? '' : Number(v);
+  // 선택지에 없는 값(예전에 직접 입력한 점수 등)은 드롭다운 없이 입력칸에 그대로 보여준다.
+  var pick = opts && (val === '' || opts.indexOf(val) !== -1);
+  var blank = absent ? '결시' : '-';
+  var input = '<input type="number" aria-label="' + label + '" min="0" max="' + d.max + '" data-domain="' + escapeHtml(d.name) + '"' +
+    (absent ? ' data-was-absent="1"' : '') + ' value="' + val + '" placeholder="' + (opts ? '직접 입력' : blank) + '"' +
+    (absent && !opts ? ' title="결시로 표시됨 — 점수를 입력하면 결시가 풀려요"' : '') + (pick ? ' hidden' : '') + ' />';
+  var select = '';
+  if (opts){
+    select = '<select class="score-pick" aria-label="' + label + '"' + (pick ? '' : ' hidden') + '>' +
+      '<option value=""' + (val === '' ? ' selected' : '') + '>' + blank + '</option>' +
+      opts.map(function(o){ return '<option value="' + o + '"' + (o === val ? ' selected' : '') + '>' + o + '</option>'; }).join('') +
+      '<option value="' + SCORE_OTHER + '">직접 입력</option></select>';
+  }
+  return '<td class="score-cell' + (absent ? ' absent-cell' : '') + '">' + select + input + '</td>';
+}
+
 function renderScoreTable(res, subject, g, c){
   clearDirty('scores');
   currentClassCtx = { subject:subject, grade:g, class:c, domains: res.domains };
@@ -3169,15 +3211,8 @@ function renderScoreTable(res, subject, g, c){
     var cells = '<td class="num-cell">' + escapeHtml(stu.number) + '번</td><td class="name-cell">' + escapeHtml(stu.name) + '</td>';
     res.domains.forEach(function(d){
       var v = stu.scores[d.name];
-      if (String(v).indexOf(ABSENT_MARKER) === 0){
-        // 결시 칸도 눌러서 점수를 넣을 수 있다. 건드리지 않고 저장하면(비워둔 채로) 결시가 그대로 유지된다 — data-was-absent로 구분.
-        cells += '<td class="score-cell absent-cell"><input type="number" aria-label="' + escapeHtml(stu.name) + ' ' + escapeHtml(d.name) +
-          ' 점수 (결시 — 입력하면 결시가 풀려요)" min="0" max="' + d.max + '" data-domain="' + escapeHtml(d.name) +
-          '" data-was-absent="1" value="" placeholder="결시" title="결시로 표시됨 — 점수를 입력하면 결시가 풀려요" /></td>';
-      } else {
-        cells += '<td class="score-cell"><input type="number" aria-label="' + escapeHtml(stu.name) + ' ' + escapeHtml(d.name) + ' 점수" min="0" max="' + d.max + '" data-domain="' +
-          escapeHtml(d.name) + '" value="' + (v === '' ? '' : Number(v)) + '" placeholder="-" /></td>';
-      }
+      // 결시 칸도 눌러서 점수를 넣을 수 있다. 건드리지 않고 저장하면(비워둔 채로) 결시가 그대로 유지된다 — data-was-absent로 구분.
+      cells += scoreCellHtml(stu, d, v, String(v).indexOf(ABSENT_MARKER) === 0);
     });
     cells += '<td class="total-cell"></td>';
     tr.innerHTML = cells;
@@ -3195,6 +3230,32 @@ document.getElementById('scoreTableBody').addEventListener('input', function(e){
   if (e.target.matches('.score-cell input')) markDirty('scores');
 });
 
+// 점수 드롭다운: 고른 값을 같은 칸의 숫자 입력칸에 넣고 input 이벤트를 흘려 보낸다 (합계·평균·저장은 전부 그 입력칸을 읽는다).
+// "직접 입력"을 고르면 드롭다운이 숫자 입력칸으로 바뀌고, 칸을 비운 채 벗어나면 다시 드롭다운으로 돌아온다.
+document.getElementById('scoreTableBody').addEventListener('change', function(e){
+  var sel = e.target;
+  if (!sel.matches('.score-cell select')) return;
+  var input = sel.parentElement.querySelector('input');
+  if (sel.value === SCORE_OTHER){
+    sel.hidden = true; input.hidden = false;
+    input.focus();
+  } else {
+    input.value = sel.value;
+    input.dispatchEvent(new Event('input', { bubbles:true }));
+  }
+});
+document.getElementById('scoreTableBody').addEventListener('focusout', function(e){
+  var input = e.target;
+  if (!input.matches('.score-cell input')) return;
+  var sel = input.parentElement.querySelector('select');
+  if (!sel) return;
+  var hasOption = Array.from(sel.options).some(function(o){ return o.value === input.value && o.value !== SCORE_OTHER; });
+  if (input.value === '' || hasOption){
+    sel.value = input.value;
+    sel.hidden = false; input.hidden = true;
+  }
+});
+
 document.getElementById('scoreTableBody').addEventListener('input', function(e){
   if (!e.target.matches('.score-cell input')) return;
   updateRowTotal(e.target.closest('tr'));
@@ -3204,7 +3265,7 @@ document.getElementById('scoreTableBody').addEventListener('input', function(e){
 document.getElementById('scoreTableBody').addEventListener('keydown', function(e){
   if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown' && e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
   var input = e.target;
-  if (!input.matches('.score-cell input')) return;
+  if (!input.matches('.score-cell input, .score-cell select')) return;
   if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
   var td = input.closest('td');
   var tr = td.parentElement;
@@ -3220,16 +3281,16 @@ document.getElementById('scoreTableBody').addEventListener('keydown', function(e
   else if (e.key === 'ArrowRight') targetCellIndex = cellIndex + 1;
   if (!targetRow) return;
   var targetCell = targetRow.children[targetCellIndex];
-  var targetInput = targetCell ? targetCell.querySelector('input') : null;
+  var targetInput = targetCell ? targetCell.querySelector('select:not([hidden]), input:not([hidden])') : null;
   if (!targetInput) return;
   e.preventDefault();
   targetInput.focus();
-  targetInput.select();
+  if (targetInput.select) targetInput.select();
 });
 
 // 어떤 방식으로 칸에 커서가 가든(클릭·Tab·방향키) 그 칸이 표(.table-scroll, 세로 스크롤) 안에 보이도록 스크롤한다.
 document.getElementById('scoreTableBody').addEventListener('focusin', function(e){
-  if (e.target.matches('.score-cell input')){
+  if (e.target.matches('.score-cell input, .score-cell select')){
     e.target.scrollIntoView({ block:'nearest', inline:'nearest' });
   }
 });

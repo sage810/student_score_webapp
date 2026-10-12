@@ -18,7 +18,7 @@
  *          (이름이 같은 과목이 학년별로 여럿이면 학생의 학년을 듣는 쪽 과목에 붙음)
  *   영역메모 : 과목ID | 학년 | 반 | 영역명 | 메모  — 응시·결시 관리의 "영역별 메모"(반마다 따로). 영역 상태는 여기에 없고 "영역" 시트의 "상태" 열에서 관리함
  *          (예전 이름은 "진행상태" — 그 이름의 시트가 있으면 처음 열 때 "영역메모"로 이름만 바뀌고 메모는 그대로 남음)
- *   영역  : 과목ID | 영역명 | 배점 | 그룹 | 상태  (그룹이 같으면 화면에서 한 묶음으로 표시. "과목명"이 아니라 "과목ID" 기준이라 이름이 같은 과목끼리도 안 섞임)
+ *   영역  : 과목ID | 영역명 | 배점 | 그룹 | 상태 | 급간  (급간 = 1~10, 비우면 점수 입력표에서 드롭다운 없이 숫자로 직접 입력. 그룹이 같으면 화면에서 한 묶음으로 표시. "과목명"이 아니라 "과목ID" 기준이라 이름이 같은 과목끼리도 안 섞임)
  *          "상태" = "완료" / "이번 수행" / "예정" (시트에서 드롭다운으로 고름, 비어 있으면 "예정"). 그 과목을 듣는 모든 반에 같은 상태가 적용됨.
  *          수행 영역 관리 화면에서 바꿔도, 시트에서 직접 바꿔도 같은 값을 쓰고, 학생 조회 화면의 "이번 수행"도 이 값을 따름
  *   명단  : 학년 | 반 | 번호 | 이름  — 학급별 학생 (과목 열 없음). 수업 과목 설정에서 그 학년·반을 추가한 과목의 응시·결시 관리, 반별 점수 입력 표, 결시자 수행안내에 자동 연결됨 (교사 화면의 "학생 명단 관리"에서도 편집 가능)
@@ -87,7 +87,7 @@ function ensureSheets_() {
   var dom = ss.getSheetByName('영역');
   if (!dom) {
     dom = ss.insertSheet('영역');
-    dom.getRange('A1:E1').setValues([DOMAIN_HEADER]);
+    dom.getRange('A1:F1').setValues([DOMAIN_HEADER]);
     // 데모: 앞의 두 영역은 완료, 에코 수세미 제작하기는 이번 수행
     dom.getRange('A2:E7').setValues([
       [DEMO_SUBJECT_ID, '청소년의 건강한 식생활 제안하기', 20, '', '완료'],
@@ -100,6 +100,12 @@ function ensureSheets_() {
     applyDomainStatusValidation_(dom);
   } else {
     migrateDomainStatus_(ss, dom);
+    // 급간 열(F열)이 없는 예전 시트에는 머리글만 달아 둔다
+    if (dom.getMaxColumns() < 6) dom.insertColumnsAfter(dom.getMaxColumns(), 6 - dom.getMaxColumns());
+    if (String(dom.getRange(1, 6).getValue()) !== '급간') {
+      dom.getRange(1, 6).setValue('급간');
+      applyDomainStatusValidation_(dom);
+    }
   }
 
   var roster = ss.getSheetByName('명단');
@@ -197,16 +203,21 @@ var SUBJECT_HEADER = ['과목명', '총점', '학년반목록', 'ID'];
 var ENROLL_PREFIX = '출석명단';
 var ENROLL_HEADER = ['학년', '반', '번호', '이름'];
 var DOMAIN_STATUSES = ['완료', '이번 수행', '예정'];
-var DOMAIN_HEADER = ['과목ID', '영역명', '배점', '그룹', '상태'];
+var DOMAIN_HEADER = ['과목ID', '영역명', '배점', '그룹', '상태', '급간'];
 var MEMO_SHEET = '영역메모';
 var LEGACY_MEMO_SHEET = '진행상태'; // 영역메모 시트의 예전 이름 (반별 상태도 함께 들어 있던 시절)
 var MEMO_HEADER = ['과목ID', '학년', '반', '영역명', '메모'];
 
 // "영역" 시트 상태 열(E열)에 완료/이번 수행/예정 드롭다운을 건다. 시트에서 직접 고칠 때도 이 세 값만 들어가게 한다.
+// 급간 열(F열)에도 1~10 드롭다운을 건다 (비워 두면 점수 입력표에서 드롭다운 없이 직접 입력).
+var DOMAIN_STEPS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 function applyDomainStatusValidation_(dom) {
   if (dom.getMaxRows() < 2) return;
   var rule = SpreadsheetApp.newDataValidation().requireValueInList(DOMAIN_STATUSES, true).setAllowInvalid(false).build();
   dom.getRange(2, 5, dom.getMaxRows() - 1, 1).setDataValidation(rule);
+  if (dom.getMaxColumns() < 6) return;
+  var stepRule = SpreadsheetApp.newDataValidation().requireValueInList(DOMAIN_STEPS, true).setAllowInvalid(false).build();
+  dom.getRange(2, 6, dom.getMaxRows() - 1, 1).setDataValidation(stepRule);
 }
 
 // 예전에는 영역 상태가 "진행상태"(지금의 영역메모) 시트에 반마다 있었다(과목ID | 학년 | 반 | 영역명 | 상태 | 메모).
@@ -396,15 +407,21 @@ function resolveSubjectInstance_(subjects, name, grade, cls) {
   return matched[0] || candidates[0];
 }
 
+// 급간은 1~10의 정수만 인정한다. 그 밖의 값·빈 칸은 0(= 드롭다운 없이 직접 입력).
+function cleanStep_(v) {
+  var n = Math.round(Number(v));
+  return n >= 1 && n <= 10 ? n : 0;
+}
+
 function getDomainsForSubject_(ss, subjectId) {
   var domSheet = ss.getSheetByName('영역');
   var lastRow = domSheet.getLastRow();
   if (lastRow < 2) return [];
-  return domSheet.getRange(2, 1, lastRow - 1, 5).getValues()
+  return domSheet.getRange(2, 1, lastRow - 1, 6).getValues()
     .filter(function (r) { return r[0] === subjectId && r[1]; })
     .map(function (r) {
       return {
-        name: String(r[1]), max: Number(r[2]) || 0, group: String(r[3] || ''),
+        name: String(r[1]), max: Number(r[2]) || 0, group: String(r[3] || ''), step: cleanStep_(r[5]),
         status: DOMAIN_STATUSES.indexOf(String(r[4])) !== -1 ? String(r[4]) : '예정' // 비어 있으면 예정
       };
     });
@@ -766,7 +783,7 @@ function saveSubjects(password, subjects) {
   }
 }
 
-// 영역 정의(이름·배점·그룹·상태)를 저장한다. 상태(완료/이번 수행/예정)는 그 과목을 듣는 모든 반에 똑같이 적용된다.
+// 영역 정의(이름·배점·그룹·상태·급간)를 저장한다. 상태(완료/이번 수행/예정)는 그 과목을 듣는 모든 반에 똑같이 적용된다.
 function saveDomains(password, subjectId, domains) {
   var ss = ensureSheets_();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
@@ -776,7 +793,7 @@ function saveDomains(password, subjectId, domains) {
     var clean = domains
       .map(function (d) {
         return {
-          name: String(d.name).trim(), max: Number(d.max) || 0, group: String(d.group || '').trim(),
+          name: String(d.name).trim(), max: Number(d.max) || 0, group: String(d.group || '').trim(), step: cleanStep_(d.step),
           status: DOMAIN_STATUSES.indexOf(d.status) !== -1 ? d.status : '예정'
         };
       })
@@ -784,14 +801,15 @@ function saveDomains(password, subjectId, domains) {
 
     var domSheet = ss.getSheetByName('영역');
     var lastRow = domSheet.getLastRow();
-    var allRows = lastRow > 1 ? domSheet.getRange(2, 1, lastRow - 1, 5).getValues() : [];
+    if (domSheet.getMaxColumns() < 6) domSheet.insertColumnsAfter(domSheet.getMaxColumns(), 6 - domSheet.getMaxColumns());
+    var allRows = lastRow > 1 ? domSheet.getRange(2, 1, lastRow - 1, 6).getValues() : [];
     var otherRows = allRows.filter(function (r) { return r[0] !== subjectId; });
-    var newRows = otherRows.concat(clean.map(function (d) { return [subjectId, d.name, d.max, d.group, d.status]; }));
+    var newRows = otherRows.concat(clean.map(function (d) { return [subjectId, d.name, d.max, d.group, d.status, d.step || '']; }));
 
     domSheet.clear();
-    domSheet.getRange(1, 1, 1, 5).setValues([DOMAIN_HEADER]);
+    domSheet.getRange(1, 1, 1, 6).setValues([DOMAIN_HEADER]);
     if (newRows.length) {
-      domSheet.getRange(2, 1, newRows.length, 5).setValues(newRows);
+      domSheet.getRange(2, 1, newRows.length, 6).setValues(newRows);
     }
     applyDomainStatusValidation_(domSheet);
 
