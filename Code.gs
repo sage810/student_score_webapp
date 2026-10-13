@@ -5,8 +5,9 @@
  * 영역·점수는 과목별로, 학생 명단은 과목과 상관없이 학급(학년·반)별로 관리한다.
  * 어떤 과목에 어떤 학급이 속하는지는 "과목" 시트의 학년반목록이 정하고, 그 학급의 학생이 자동으로 그 과목의 화면에 연결된다.
  *
- * 시트 → 화면 방향: 교사 화면은 열려 있는 동안 30초마다 getDataVersion(시트 전체 지문)을 확인해서, 시트에서 직접 고친 내용도
- * 자동으로 다시 불러온다(저장 안 한 입력이 있으면 배너로 알림). 학생 화면은 탭으로 돌아올 때 다시 조회한다. 트리거·추가 권한 없음.
+ * 시트 → 화면 방향: 교사 화면은 열려 있는 동안 30초마다 getDataVersion(시트별 지문)을 확인해서, 시트에서 직접 고친 내용도
+ * 자동으로 다시 불러온다. 저장 안 한 입력이 있으면 배너로 알리고, getSheetSnapshot 으로 바뀐 시트의 값을 받아 "어느 행의 어느 칸이
+ * 전 → 후로 바뀌었는지" 보여준 뒤 반영할지 묻는다. 학생 화면은 탭으로 돌아올 때 다시 조회한다. 트리거·추가 권한 없음.
  *
  * 시트 구성 (없으면 ensureSheets_ 가 자동 생성 + 데모 데이터 채움):
  *   설정  : A열 키 / B열 값  (연도, 학기, 비밀번호, 1학년반수, 2학년반수, 3학년반수)
@@ -581,20 +582,50 @@ function verifyTeacherPassword(password) {
   return { ok: verifyPassword_(ss, password) };
 }
 
-// 시트 전체의 "지문". 교사 화면이 30초마다 이 값을 물어봐서 달라졌으면 열려 있는 화면을 다시 불러온다.
-// 시트에서 직접 고치든(값 수정·행 추가·행 삭제), 다른 교사가 웹앱에서 저장하든 어떤 시트의 어떤 칸이 바뀌어도 값이 달라진다.
+// 시트 변경 감지 (시트 → 화면 방향). 교사 화면이 30초마다 getDataVersion 을 물어봐서 지문이 달라졌으면
+// getSheetSnapshot 으로 바뀐 시트의 값만 받아, 화면이 갖고 있던 사본과 비교해 무엇이 바뀌었는지 보여주고 다시 불러온다.
+// 시트에서 직접 고치든(값 수정·행 추가·행 삭제), 다른 교사가 웹앱에서 저장하든 어떤 칸이 바뀌어도 지문이 달라진다.
 // 자주 불리므로 ensureSheets_() 를 거치지 않고 읽기만 한다.
+
+// 앱이 쓰는 시트만 본다 (교사가 따로 만든 시트의 =NOW() 같은 수식 때문에 헛 감지되지 않게)
+function isAppSheet_(name) {
+  return ['설정', '과목', '영역', '명단', MEMO_SHEET].indexOf(name) !== -1 ||
+    name.indexOf('점수_') === 0 || name.indexOf('결시명단_') === 0 || name.indexOf(ENROLL_PREFIX + '_') === 0;
+}
+// 시트마다 값과 지문을 한 번에 읽는다. 지문 확인과 스냅샷이 같은 값을 보도록 둘 다 여기서 만든다.
+// 날짜 칸은 문자열로 바꾼다 (google.script.run 은 Date 를 돌려줄 수 없다).
+function sheetDigests_(ss) {
+  return ss.getSheets().filter(function (sh) { return isAppSheet_(sh.getName()); }).map(function (sh) {
+    var values = sh.getDataRange().getValues().map(function (row) {
+      return row.map(function (v) { return v instanceof Date ? v.toISOString() : v; });
+    });
+    return { name: sh.getName(), values: values, hash: md5_(JSON.stringify(values)) };
+  });
+}
+function md5_(text) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, text, Utilities.Charset.UTF_8)
+    .map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
+}
+function versionOf_(digests) {
+  var sheets = {};
+  digests.forEach(function (d) { sheets[d.name] = d.hash; });
+  return { all: md5_(digests.map(function (d) { return d.name + ':' + d.hash; }).join('\n')), sheets: sheets };
+}
+// { all: 전체 지문, sheets: { 시트명: 지문 } }
 function getDataVersion(password) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
-  return computeDataVersion_(ss);
+  return versionOf_(sheetDigests_(ss));
 }
-function computeDataVersion_(ss) {
-  var text = ss.getSheets().map(function (sh) {
-    return sh.getName() + '\t' + JSON.stringify(sh.getDataRange().getValues());
-  }).join('\n');
-  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, text, Utilities.Charset.UTF_8)
-    .map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
+// known = 화면이 갖고 있는 사본의 시트별 지문 ({ 시트명: 지문 }, 없으면 전부). 지문이 다른 시트의 값만 돌려준다.
+// { version, names: 지금 있는 시트 이름들, values: { 시트명: [[...], ...] } }
+function getSheetSnapshot(password, known) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
+  var digests = sheetDigests_(ss);
+  var values = {};
+  digests.forEach(function (d) { if (!known || known[d.name] !== d.hash) values[d.name] = d.values; });
+  return { version: versionOf_(digests), names: digests.map(function (d) { return d.name; }), values: values };
 }
 
 var isScored_ = function (v) { return v !== '' && v !== null && v !== undefined && !isNaN(v); };
@@ -738,8 +769,7 @@ function getTeacherConfig(password) {
     year: cfg['연도'], semester: cfg['학기'],
     classCounts: getClassCounts_(cfg),
     subjects: subjects,
-    sheetUrl: ss.getUrl(),
-    dataVersion: computeDataVersion_(ss) // 교사 화면이 이 값을 기준으로 시트 변경을 감지한다
+    sheetUrl: ss.getUrl()
   };
 }
 

@@ -620,7 +620,8 @@
   .credit-link:hover{ color:var(--ink); }
   .credit-link:focus-visible{ outline:2px solid var(--purple); outline-offset:3px; }
 
-  /* 구글 시트 변경 알림: 저장 안 한 변경이 있어 자동 반영을 미뤘을 때, 내용 맨 위에 붙어서 스크롤을 따라다닌다 */
+  /* 구글 시트 변경 알림: 저장 안 한 입력이 있어 자동 반영을 미뤘을 때, 내용 맨 위에 붙어서 스크롤을 따라다닌다 */
+  .sync-banner[hidden]{ display:none; }
   .sync-banner{
     position:sticky; top:calc(var(--topbar-h, 84px) + 8px); z-index:15;
     display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
@@ -632,6 +633,34 @@
     border:1.5px solid #e0b25a; border-radius:9px; background:#fff; color:#7a4b00;
   }
   .sync-banner-btn:hover{ background:#fff9ec; }
+  /* 바뀐 내용 창: 시트에서 어느 행의 어느 칸이 전 → 후로 바뀌었는지 보여주고 반영할지 묻는다 */
+  .sync-modal[hidden]{ display:none; }
+  .sync-modal{
+    position:fixed; inset:0; z-index:45; display:flex; align-items:center; justify-content:center;
+    padding:16px; background:rgba(16,17,20,0.45);
+  }
+  .sync-modal-card{
+    width:100%; max-width:560px; max-height:min(80vh, 640px); display:flex; flex-direction:column;
+    background:var(--surface); border-radius:var(--radius-lg); box-shadow:0 16px 48px rgba(16,17,20,0.25); padding:24px;
+  }
+  .sync-modal-card h3{ margin:0 0 4px; font-size:16px; font-weight:800; }
+  .sync-modal-sub{ margin:0 0 12px; font-size:12.5px; color:var(--ink-soft); }
+  .sync-modal-sub:empty{ display:none; }
+  .sync-modal-body{ flex:1 1 auto; min-height:0; overflow-y:auto; border:1px solid var(--border); border-radius:12px; padding:4px 0; }
+  .sync-sheet{ padding:8px 14px; }
+  .sync-sheet + .sync-sheet{ border-top:1px solid var(--border); }
+  .sync-sheet-name{ font-size:12.5px; font-weight:700; color:var(--purple-dark); margin:0 0 4px; }
+  .sync-sheet ul{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:4px; }
+  .sync-sheet li{ font-size:13px; line-height:1.5; overflow-wrap:anywhere; }
+  .sync-change .from{ color:var(--ink-soft); text-decoration:line-through; }
+  .sync-change .to{ font-weight:700; color:var(--purple-dark); }
+  .sync-tag{ display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:11.5px; font-weight:700; vertical-align:1px; }
+  .sync-tag.add{ background:var(--green-tint); color:#0b6b41; }
+  .sync-tag.del{ background:var(--red-tint); color:var(--red); }
+  .sync-more{ font-size:12px; color:var(--ink-soft); margin:4px 0 0; }
+  .sync-modal-empty{ padding:24px 16px; text-align:center; font-size:13px; color:var(--ink-soft); line-height:1.5; }
+  .sync-modal-hint{ margin:12px 0 0; font-size:12.5px; color:var(--ink-soft); line-height:1.5; }
+  .sync-modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; flex-wrap:wrap; }
   .toast{
     position:fixed; left:50%; bottom:32px; transform:translateX(-50%);
     background: var(--ink); color:#fff; font-size:13px; font-weight:500;
@@ -756,8 +785,8 @@
 <div class="wrap">
 
   <div class="sync-banner" id="syncBanner" hidden>
-    <span>구글 시트에서 바뀐 내용이 있어요. 저장하지 않은 변경이 있어서 자동으로 반영하지 않았어요.</span>
-    <button type="button" class="sync-banner-btn" id="syncReloadBtn">저장하지 않고 다시 불러오기</button>
+    <span>구글 시트에서 바뀐 내용이 있어요. 저장하지 않은 입력이 있어서 아직 반영하지 않았어요. 그대로 저장하면 시트의 변경을 덮어쓸 수 있으니 먼저 확인해 주세요.</span>
+    <button type="button" class="sync-banner-btn" id="syncShowBtn">바뀐 내용 보기</button>
   </div>
 
   <!-- 홈 -->
@@ -1159,6 +1188,18 @@
 </div>
 </div>
 
+<div class="sync-modal" id="syncModal" hidden>
+  <div class="sync-modal-card" role="dialog" aria-modal="true" aria-labelledby="syncModalTitle">
+    <h3 id="syncModalTitle">구글 시트에서 바뀐 내용</h3>
+    <p class="sync-modal-sub" id="syncModalSub"></p>
+    <div class="sync-modal-body" id="syncModalBody"></div>
+    <p class="sync-modal-hint">반영하면 화면을 시트 내용으로 다시 불러와요. 저장하지 않은 입력은 사라지니, 먼저 저장하려면 "나중에"를 누르고 저장한 뒤 다시 열어주세요.</p>
+    <div class="sync-modal-actions">
+      <button type="button" class="btn-secondary" id="syncLaterBtn">나중에</button>
+      <button type="button" class="btn-primary" id="syncApplyBtn">시트 내용 반영하기</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <div id="noticePrintArea" aria-hidden="true"></div>
 
@@ -1283,8 +1324,7 @@ function createMockRun(){
         year:state.year, semester:state.semester,
         classCounts: state.classCounts,
         subjects: state.subjects.map(function(s){ return { id:s.id, name:s.name, declaredTotal:s.declaredTotal, classPairs:(s.classPairs||[]).slice(), students:(s.students||[]).slice(), domains:s.domains.map(function(d){ return Object.assign({ status:'예정' }, d); }) }; }),
-        sheetUrl: state.sheetUrl,
-        dataVersion: mockVersion()
+        sheetUrl: state.sheetUrl
       };
     }); },
     saveTeacherConfig: function(pw,cfg){ run(function(){
@@ -1481,7 +1521,8 @@ function createMockRun(){
       }) };
     }); },
     getSheetUrl: function(pw){ run(function(){ check(pw); return state.sheetUrl; }); },
-    getDataVersion: function(pw){ run(function(){ check(pw); return mockVersion(); }); },
+    getDataVersion: function(pw){ run(function(){ check(pw); var v = mockVersion(); return { all:v, sheets:{ '목업':v } }; }); },
+    getSheetSnapshot: function(pw, known){ run(function(){ check(pw); var v = mockVersion(); return { version:{ all:v, sheets:{ '목업':v } }, names:['목업'], values:{} }; }); },
     getWebAppUrl: function(){ run(function(){ return ''; }); }
   };
   function run(fn){
@@ -1579,23 +1620,60 @@ window.addEventListener('beforeunload', function(e){
 });
 
 /* ---- 구글 시트 변경 감지 (시트 → 화면 방향) ----
-   서버가 브라우저에 먼저 알릴 수 없어서, 탭이 보이는 동안 30초마다 시트 전체의 지문(getDataVersion)을 물어본다.
-   지문이 달라졌으면: 저장 안 한 변경이 없을 때는 열려 있는 화면을 그대로 다시 불러오고, 있을 때는 배너로 알린다.
-   내가 저장한 직후에는 기준 지문을 비워 두었다가(syncAdopt(null)) 다음 확인 값을 그대로 받아들여, 내 저장 때문에 화면이 다시 불러와지지 않게 한다. */
+   서버가 브라우저에 먼저 알릴 수 없어서, 탭이 보이는 동안 30초마다 시트별 지문(getDataVersion)을 물어본다.
+   달라졌으면 바뀐 시트의 값만 받아(getSheetSnapshot) 화면이 갖고 있던 사본(syncSnapshot)과 비교해 무엇이 어떻게 바뀌었는지 알아낸다.
+   - 저장 안 한 입력이 없으면: 열려 있는 화면을 그대로 다시 불러오고 몇 건이 바뀌었는지 토스트로 알린다.
+   - 저장 안 한 입력이 있으면: 배너로 알리고, "바뀐 내용 보기"를 누르면 전 → 후 목록을 보여준 뒤 반영할지 묻는다.
+   내가 저장한 직후에는 사본과 기준 지문을 새로 받아(syncResync) 내 저장이 "시트 변경"으로 보이지 않게 한다. */
 var SYNC_INTERVAL_MS = 30000;
-var syncVersion = null;   // 마지막으로 확인한 지문 (null = 다음 값을 비교 없이 받아들임)
-var syncSeq = 0;          // 기준 지문을 바꿀 때마다 +1 — 그 전에 보낸 확인 요청의 응답은 버린다
+var syncVersion = null;    // 사본을 받을 때의 지문 { all, sheets:{ 시트명: 지문 } } (null = 다음 지문을 비교 없이 받아들임)
+var syncSnapshot = null;   // 화면이 갖고 있는 시트 값 사본 { 시트명: [[...], ...] } — 전 → 후 비교의 "전"
+var syncPending = null;    // "바뀐 내용 보기"로 받아 둔, 아직 반영하지 않은 { res, diff }
+var syncSeq = 0;           // 기준을 바꿀 때마다 +1 — 그 전에 보낸 요청의 응답은 버린다
 var syncTimer = null;
 var syncChecking = false;
 var syncLastAt = 0;
 
-function startSyncWatch(){ syncAdopt(null); scheduleSyncCheck(SYNC_INTERVAL_MS); }
-function stopSyncWatch(){ clearTimeout(syncTimer); syncTimer = null; syncVersion = null; syncSeq++; hideSyncBanner(); }
+function startSyncWatch(){ syncAdopt(null); syncResync(null); scheduleSyncCheck(SYNC_INTERVAL_MS); }
+function stopSyncWatch(){
+  clearTimeout(syncTimer); syncTimer = null;
+  syncVersion = null; syncSnapshot = null; syncPending = null; syncSeq++;
+  hideSyncBanner(); hideSyncModal();
+}
 function syncAdopt(version){ syncSeq++; syncVersion = version || null; }
-function syncAfterSave(){ syncAdopt(null); scheduleSyncCheck(0); }
 function scheduleSyncCheck(ms){ clearTimeout(syncTimer); syncTimer = setTimeout(syncCheck, ms); }
 function isSaving(){
   return DIRTY_SAVE_ORDER.some(function(k){ return document.getElementById(DIRTY_SAVE_BTN[k]).querySelector('.btn-label').textContent === '저장 중...'; });
+}
+// 내가 저장한 뒤: 배너가 떠 있으면(시트 변경을 아직 반영 안 함) 사본을 갈아끼우지 않고, 입력이 다 저장됐으면 지금 다시 불러온다.
+// (이때는 내 저장과 시트 변경이 섞여 있어 몇 건인지 세지 않는다)
+function syncAfterSave(){
+  if (!document.getElementById('syncBanner').hidden){
+    if (dirtyKeys().length === 0) onSheetChanged(true);
+    return;
+  }
+  var known = syncVersion ? syncVersion.sheets : null;
+  syncAdopt(null);
+  syncResync(known);
+}
+function syncResync(known){
+  fetchSheetSnapshot(known, function(res){ applySnapshot(res); });
+}
+function fetchSheetSnapshot(known, onOk, onFail){
+  var seq = syncSeq;
+  gs.withSuccessHandler(function(res){
+    if (!TEACHER_PW || seq !== syncSeq) return; // 그사이 기준이 바뀌었으면(저장·로그아웃 등) 버린다
+    onOk(res);
+  }).withFailureHandler(function(){ if (onFail) onFail(); }).getSheetSnapshot(TEACHER_PW, known);
+}
+// 받은 값으로 사본을 갈아끼운다: 바뀐 시트는 새 값, 안 바뀐 시트는 갖고 있던 값, 없어진 시트는 뺀다.
+function applySnapshot(res){
+  var next = {};
+  (res.names || []).forEach(function(name){
+    next[name] = res.values[name] || (syncSnapshot && syncSnapshot[name]) || null;
+  });
+  syncSnapshot = next;
+  syncAdopt(res.version);
 }
 function syncCheck(){
   syncTimer = null;
@@ -1610,7 +1688,7 @@ function syncCheck(){
     if (!TEACHER_PW) return;
     if (seq === syncSeq){
       if (syncVersion === null) syncVersion = v;
-      else if (v !== syncVersion){ syncVersion = v; onSheetChanged(); }
+      else if (v.all !== syncVersion.all) onSheetChanged();
     }
     scheduleSyncCheck(SYNC_INTERVAL_MS);
   }).withFailureHandler(function(){
@@ -1618,9 +1696,14 @@ function syncCheck(){
     if (TEACHER_PW) scheduleSyncCheck(SYNC_INTERVAL_MS);
   }).getDataVersion(TEACHER_PW);
 }
-function onSheetChanged(){
-  if (dirtyKeys().length === 0) refreshFromSheet();
-  else showSyncBanner();
+function onSheetChanged(afterSave){
+  if (dirtyKeys().length > 0){ showSyncBanner(); return; }
+  fetchSheetSnapshot(syncVersion ? syncVersion.sheets : null, function(res){
+    var diff = diffSnapshot(syncSnapshot, res);
+    applySnapshot(res);
+    hideSyncBanner();
+    refreshFromSheet(afterSave ? null : diff.count);
+  }, function(){ showToast('구글 시트의 변경을 불러오지 못했어요.', true); });
 }
 // 탭으로 돌아오면 바로 확인한다 (방금 확인했으면 건너뜀)
 function syncOnReturn(){
@@ -1633,16 +1716,153 @@ window.addEventListener('focus', syncOnReturn);
 
 function showSyncBanner(){ document.getElementById('syncBanner').hidden = false; }
 function hideSyncBanner(){ document.getElementById('syncBanner').hidden = true; }
-document.getElementById('syncReloadBtn').addEventListener('click', function(){
-  if (!confirm('저장하지 않은 변경사항은 사라져요.\n구글 시트 내용으로 다시 불러올까요?')) return;
-  DIRTY_SAVE_ORDER.forEach(clearDirty);
-  hideSyncBanner();
-  refreshFromSheet();
+function showSyncModal(bodyHtml, sub){
+  document.getElementById('syncModalBody').innerHTML = bodyHtml;
+  document.getElementById('syncModalSub').textContent = sub || '';
+  document.getElementById('syncModal').hidden = false;
+  document.getElementById('syncLaterBtn').focus();
+}
+function hideSyncModal(){ document.getElementById('syncModal').hidden = true; }
+
+// "바뀐 내용 보기": 바뀐 시트의 값을 받아 사본과 비교한 목록을 보여준다. 반영은 "시트 내용 반영하기"를 눌러야 한다.
+document.getElementById('syncShowBtn').addEventListener('click', function(){
+  syncPending = null;
+  document.getElementById('syncApplyBtn').disabled = true;
+  showSyncModal('<div class="sync-modal-empty">바뀐 내용을 불러오는 중...</div>', '');
+  fetchSheetSnapshot(syncVersion ? syncVersion.sheets : null, function(res){
+    var diff = diffSnapshot(syncSnapshot, res);
+    syncPending = { res: res, diff: diff };
+    renderSyncModal(diff);
+    document.getElementById('syncApplyBtn').disabled = false;
+  }, function(){
+    showSyncModal('<div class="sync-modal-empty">바뀐 내용을 불러오지 못했어요. 다시 시도해주세요.</div>', '');
+  });
 });
+document.getElementById('syncLaterBtn').addEventListener('click', function(){ syncPending = null; hideSyncModal(); });
+document.getElementById('syncApplyBtn').addEventListener('click', function(){
+  if (!syncPending) return;
+  var pending = syncPending;
+  syncPending = null;
+  applySnapshot(pending.res);
+  DIRTY_SAVE_ORDER.forEach(clearDirty);
+  hideSyncModal();
+  hideSyncBanner();
+  refreshFromSheet(pending.diff.count);
+});
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape' && !document.getElementById('syncModal').hidden){ syncPending = null; hideSyncModal(); }
+});
+
+/* 사본 비교: 시트별로 "같은 행"을 머리글 이름으로 찾아(열 순서가 바뀌어도 됨) 추가·삭제·바뀐 칸을 가려낸다. */
+function syncKeyColumns(name, header){
+  var want = null;
+  if (name === '설정') want = [0];
+  else if (name === '과목') want = ['ID'];
+  else if (name === '영역') want = ['과목ID', '영역명'];
+  else if (name === '영역메모') want = ['과목ID', '학년', '반', '영역명'];
+  else if (name === '명단' || name.indexOf('출석명단_') === 0 || name.indexOf('점수_') === 0) want = ['학년', '반', '번호'];
+  else if (name.indexOf('결시명단_') === 0) want = ['영역', '학년', '반', '번호'];
+  if (!want) return null;
+  var idx = want.map(function(w){ return typeof w === 'number' ? w : header.indexOf(w); });
+  return idx.some(function(i){ return i < 0; }) ? null : idx;
+}
+function syncCell(v){ return v === null || v === undefined ? '' : String(v); }
+function diffSheet(name, oldRows, newRows){
+  var hasHeader = name !== '설정'; // "설정"은 머리글 없이 항목 | 값
+  var header = hasHeader ? (newRows[0] || oldRows[0] || []).map(syncCell) : ['항목', '값'];
+  var keyCols = syncKeyColumns(name, header);
+  function keyOf(row, i){ return keyCols ? keyCols.map(function(c){ return syncCell(row[c]); }).join('\u0001') : String(i); }
+  function index(rows){
+    var map = {}, order = [];
+    rows.forEach(function(row, i){
+      if (hasHeader && i === 0) return;
+      if (row.every(function(v){ return syncCell(v) === ''; })) return;
+      var k = keyOf(row, i);
+      if (!(k in map)){ map[k] = row; order.push(k); }
+    });
+    return { map: map, order: order };
+  }
+  var a = index(oldRows), b = index(newRows);
+  var items = [];
+  b.order.forEach(function(k){
+    var n = b.map[k], o = a.map[k];
+    if (!o){ items.push({ type:'add', row:n }); return; }
+    var cols = [];
+    for (var i = 0; i < Math.max(o.length, n.length); i++){
+      if (keyCols && keyCols.indexOf(i) !== -1) continue;
+      if (header[i] === '합계') continue; // 수식 결과라 점수를 따라 바뀐다
+      if (syncCell(o[i]) !== syncCell(n[i])) cols.push({ col: header[i] || (i + 1) + '열', from: syncCell(o[i]), to: syncCell(n[i]) });
+    }
+    if (cols.length) items.push({ type:'change', row:n, cols:cols });
+  });
+  a.order.forEach(function(k){ if (!b.map[k]) items.push({ type:'del', row:a.map[k] }); });
+  return { name:name, header:header, keyCols:keyCols, items:items };
+}
+function diffSnapshot(oldSnap, res){
+  var sheets = [], count = 0;
+  Object.keys(res.values || {}).forEach(function(name){
+    var oldRows = oldSnap && oldSnap[name];
+    if (!oldRows){ sheets.push({ name:name, items:null, isNew: !(oldSnap && name in oldSnap) }); count++; return; }
+    var d = diffSheet(name, oldRows, res.values[name]);
+    if (d.items.length){ sheets.push(d); count += d.items.length; }
+  });
+  Object.keys(oldSnap || {}).forEach(function(name){
+    if (res.names && res.names.indexOf(name) === -1){ sheets.push({ name:name, removed:true }); count++; }
+  });
+  return { sheets:sheets, count:count };
+}
+function subjectNameById(id){
+  var s = currentConfig && currentConfig.subjects.filter(function(x){ return x.id === id; })[0];
+  return s ? s.name : '';
+}
+// 행을 사람이 알아볼 말로: "기술·가정 · 1학년 1반 2번 김민준", "1학년반수", "기술·가정 · 적정기술의 필요성 주장하기"
+function describeRow(name, header, row){
+  function get(h){ var i = header.indexOf(h); return i >= 0 && row[i] !== undefined && row[i] !== null ? String(row[i]) : ''; }
+  if (name === '설정') return syncCell(row[0]);
+  var parts = [];
+  if (get('과목ID')) parts.push(subjectNameById(get('과목ID')));
+  if (name === '과목') parts.push(get('과목명'));
+  if (get('영역')) parts.push(get('영역'));
+  var who = (get('학년') ? get('학년') + '학년 ' : '') + (get('반') ? get('반') + '반 ' : '') + (get('번호') ? get('번호') + '번 ' : '') + get('이름');
+  if (who.trim()) parts.push(who.trim());
+  if (get('영역명')) parts.push(get('영역명'));
+  return parts.filter(Boolean).join(' · ') || '행';
+}
+// 추가된 행: 이름에 쓰인 열 말고 값이 있는 열 몇 개를 덧붙인다 (예: 배점 10 · 상태 예정 · 급간 2)
+function syncAddSummary(sh, row){
+  var skip = ['학년', '반', '번호', '이름', '과목ID', '과목명', '영역', '영역명', '합계', 'ID'];
+  var parts = [];
+  sh.header.forEach(function(h, i){
+    if (parts.length >= 3 || !h || skip.indexOf(h) !== -1 || (sh.keyCols && sh.keyCols.indexOf(i) !== -1)) return;
+    if (syncCell(row[i]) === '') return;
+    parts.push(escapeHtml(h) + ' ' + escapeHtml(syncCell(row[i])));
+  });
+  return parts.length ? ' <span class="sync-change">(' + parts.join(' · ') + ')</span>' : '';
+}
+function renderSyncModal(diff){
+  var SHOW = 30;
+  var html = diff.sheets.map(function(sh){
+    var out = '<div class="sync-sheet"><p class="sync-sheet-name">"' + escapeHtml(sh.name) + '" 시트' + (sh.items ? ' · ' + sh.items.length + '건' : '') + '</p>';
+    if (sh.removed) return out + '<ul><li>시트가 없어졌어요<span class="sync-tag del">삭제</span></li></ul></div>';
+    if (!sh.items) return out + '<ul><li>' + (sh.isNew ? '시트가 새로 생겼어요<span class="sync-tag add">추가</span>' : '내용이 바뀌었지만 비교할 이전 내용이 없어서 자세히는 알 수 없어요') + '</li></ul></div>';
+    out += '<ul>' + sh.items.slice(0, SHOW).map(function(it){
+      var label = '<b>' + escapeHtml(describeRow(sh.name, sh.header, it.row)) + '</b>';
+      if (it.type === 'add') return '<li>' + label + '<span class="sync-tag add">추가</span>' + syncAddSummary(sh, it.row) + '</li>';
+      if (it.type === 'del') return '<li>' + label + '<span class="sync-tag del">삭제</span></li>';
+      return '<li>' + label + ' — ' + it.cols.map(function(c){
+        return '<span class="sync-change">' + escapeHtml(c.col) + ': <span class="from">' + escapeHtml(c.from || '(빈 칸)') + '</span> → <span class="to">' + escapeHtml(c.to || '(빈 칸)') + '</span></span>';
+      }).join(', ') + '</li>';
+    }).join('') + '</ul>';
+    if (sh.items.length > SHOW) out += '<p class="sync-more">외 ' + (sh.items.length - SHOW) + '건</p>';
+    return out + '</div>';
+  }).join('');
+  if (!html) html = '<div class="sync-modal-empty">시트가 바뀌긴 했지만 어떤 칸이 바뀌었는지는 찾지 못했어요.<br>반영하면 시트의 지금 내용으로 다시 불러와요.</div>';
+  showSyncModal(html, diff.count ? '모두 ' + diff.count + '건' : '');
+}
 
 // 시트가 바뀌었을 때 열려 있는 화면을 그대로 다시 불러온다: 설정(과목·영역·반 수)을 새로 받은 뒤,
 // 보고 있던 반의 점수표·결시표·명단, 비교·결시자 목록, 홈 통계를 같은 선택으로 다시 불러온다.
-function refreshFromSheet(){
+function refreshFromSheet(count){
   var keep = {
     home: !document.getElementById('homeView').hidden,
     domainGrade: document.getElementById('domainGradeSelect').value,
@@ -1654,8 +1874,6 @@ function refreshFromSheet(){
   };
   gs.withSuccessHandler(function(cfg){
     applyConfigToForm(cfg);
-    syncAdopt(cfg.dataVersion);
-    hideSyncBanner();
     if (keep.home) loadHomeStats();
     if (restoreSelect('domainGradeSelect', keep.domainGrade)) refreshDomainPanel();
     if (keep.scores && selectedScoreSubject === keep.scores.subject && restorePick('pickGrade', 'pickClass', keep.scores))
@@ -1666,7 +1884,7 @@ function refreshFromSheet(){
       loadRosterView(keep.roster.grade, keep.roster.cls);
     if (keep.compare !== null){ restoreSelect('compareDomainSelect', keep.compare); loadCompareView(); }
     if (keep.notice !== null){ restoreSelect('noticeDomainSelect', keep.notice); loadNoticeView(selectedNoticeSubject); }
-    showToast('구글 시트에서 바뀐 내용을 반영했어요.');
+    showToast(count ? '구글 시트에서 바뀐 내용 ' + count + '건을 반영했어요.' : '구글 시트의 내용을 다시 불러왔어요.');
   }).withFailureHandler(function(){
     showToast('구글 시트의 변경을 불러오지 못했어요.', true);
   }).getTeacherConfig(TEACHER_PW);
@@ -2009,10 +2227,7 @@ document.getElementById('gateForm').addEventListener('submit', function(e){
 });
 
 function loadDashboard(){
-  gs.withSuccessHandler(function(cfg){
-    applyConfigToForm(cfg);
-    syncAdopt(cfg.dataVersion); // 방금 받은 설정을 기준으로 시트 변경을 감지한다
-  }).withFailureHandler(function(){
+  gs.withSuccessHandler(applyConfigToForm).withFailureHandler(function(){
     showToast('설정을 불러오지 못했어요.', true);
   }).getTeacherConfig(TEACHER_PW);
 }
@@ -2666,7 +2881,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', function(){
       setBtnLoading(btn, false, '저장');
       showToast('수업 과목이 저장됐어요.');
       clearDirty('config');
-      syncAdopt(null); // loadDashboard 가 새 기준 지문을 받아온다
+      syncAfterSave();
       loadDashboard();
     }).withFailureHandler(function(){
       setBtnLoading(btn, false, '저장');
@@ -2871,7 +3086,7 @@ document.getElementById('saveDomainsBtn').addEventListener('click', function(){
       setBtnLoading(btn, false, '저장');
       showToast('수행 영역이 저장됐어요.');
       clearDirty('domains');
-      syncAdopt(null); // loadDashboard 가 새 기준 지문을 받아온다
+      syncAfterSave();
       loadDashboard();
     }).withFailureHandler(function(){
       setBtnLoading(btn, false, '저장');
