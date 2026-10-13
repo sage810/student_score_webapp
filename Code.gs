@@ -5,6 +5,9 @@
  * 영역·점수는 과목별로, 학생 명단은 과목과 상관없이 학급(학년·반)별로 관리한다.
  * 어떤 과목에 어떤 학급이 속하는지는 "과목" 시트의 학년반목록이 정하고, 그 학급의 학생이 자동으로 그 과목의 화면에 연결된다.
  *
+ * 시트 → 화면 방향: 교사 화면은 열려 있는 동안 30초마다 getDataVersion(시트 전체 지문)을 확인해서, 시트에서 직접 고친 내용도
+ * 자동으로 다시 불러온다(저장 안 한 입력이 있으면 배너로 알림). 학생 화면은 탭으로 돌아올 때 다시 조회한다. 트리거·추가 권한 없음.
+ *
  * 시트 구성 (없으면 ensureSheets_ 가 자동 생성 + 데모 데이터 채움):
  *   설정  : A열 키 / B열 값  (연도, 학기, 비밀번호, 1학년반수, 2학년반수, 3학년반수)
  *          "비밀번호"는 교사 관리 화면(?page=teacher) 접속 시 입력해야 하는 값 — 시트에서 직접 바꾸면 됨
@@ -578,6 +581,22 @@ function verifyTeacherPassword(password) {
   return { ok: verifyPassword_(ss, password) };
 }
 
+// 시트 전체의 "지문". 교사 화면이 30초마다 이 값을 물어봐서 달라졌으면 열려 있는 화면을 다시 불러온다.
+// 시트에서 직접 고치든(값 수정·행 추가·행 삭제), 다른 교사가 웹앱에서 저장하든 어떤 시트의 어떤 칸이 바뀌어도 값이 달라진다.
+// 자주 불리므로 ensureSheets_() 를 거치지 않고 읽기만 한다.
+function getDataVersion(password) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
+  return computeDataVersion_(ss);
+}
+function computeDataVersion_(ss) {
+  var text = ss.getSheets().map(function (sh) {
+    return sh.getName() + '\t' + JSON.stringify(sh.getDataRange().getValues());
+  }).join('\n');
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, text, Utilities.Charset.UTF_8)
+    .map(function (b) { return ('0' + (b & 0xff).toString(16)).slice(-2); }).join('');
+}
+
 var isScored_ = function (v) { return v !== '' && v !== null && v !== undefined && !isNaN(v); };
 
 /* ---------- 학생용 ---------- */
@@ -719,7 +738,8 @@ function getTeacherConfig(password) {
     year: cfg['연도'], semester: cfg['학기'],
     classCounts: getClassCounts_(cfg),
     subjects: subjects,
-    sheetUrl: ss.getUrl()
+    sheetUrl: ss.getUrl(),
+    dataVersion: computeDataVersion_(ss) // 교사 화면이 이 값을 기준으로 시트 변경을 감지한다
   };
 }
 

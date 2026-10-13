@@ -620,6 +620,18 @@
   .credit-link:hover{ color:var(--ink); }
   .credit-link:focus-visible{ outline:2px solid var(--purple); outline-offset:3px; }
 
+  /* 구글 시트 변경 알림: 저장 안 한 변경이 있어 자동 반영을 미뤘을 때, 내용 맨 위에 붙어서 스크롤을 따라다닌다 */
+  .sync-banner{
+    position:sticky; top:calc(var(--topbar-h, 84px) + 8px); z-index:15;
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    font-size:13px; font-weight:600; color:#7a4b00; background:#fff4de; border:1px solid #f3d28b;
+    border-radius:12px; padding:10px 14px; margin:0 0 16px;
+  }
+  .sync-banner-btn{
+    padding:8px 12px; font-size:12.5px; font-weight:700; font-family:inherit; cursor:pointer;
+    border:1.5px solid #e0b25a; border-radius:9px; background:#fff; color:#7a4b00;
+  }
+  .sync-banner-btn:hover{ background:#fff9ec; }
   .toast{
     position:fixed; left:50%; bottom:32px; transform:translateX(-50%);
     background: var(--ink); color:#fff; font-size:13px; font-weight:500;
@@ -742,6 +754,11 @@
 </button>
 
 <div class="wrap">
+
+  <div class="sync-banner" id="syncBanner" hidden>
+    <span>구글 시트에서 바뀐 내용이 있어요. 저장하지 않은 변경이 있어서 자동으로 반영하지 않았어요.</span>
+    <button type="button" class="sync-banner-btn" id="syncReloadBtn">저장하지 않고 다시 불러오기</button>
+  </div>
 
   <!-- 홈 -->
   <div id="homeView">
@@ -1204,6 +1221,8 @@ function createMockRun(){
     memos:{} // 과목ID -> 학년-반 -> { 영역명: 메모 }
   };
   function check(pw){ if (String(pw) !== state.password) throw new Error('비밀번호가 올바르지 않습니다.'); }
+  // 시트 지문 흉내: 목업 상태가 바뀌면 값이 달라진다
+  function mockVersion(){ var s = JSON.stringify(state), h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return String(h >>> 0); }
   function findSubjectById(id){ return state.subjects.filter(function(s){ return s.id === id; })[0]; }
   function resolveSubjectInstance(name, grade, cls){
     var candidates = state.subjects.filter(function(s){ return s.name === name; });
@@ -1264,7 +1283,8 @@ function createMockRun(){
         year:state.year, semester:state.semester,
         classCounts: state.classCounts,
         subjects: state.subjects.map(function(s){ return { id:s.id, name:s.name, declaredTotal:s.declaredTotal, classPairs:(s.classPairs||[]).slice(), students:(s.students||[]).slice(), domains:s.domains.map(function(d){ return Object.assign({ status:'예정' }, d); }) }; }),
-        sheetUrl: state.sheetUrl
+        sheetUrl: state.sheetUrl,
+        dataVersion: mockVersion()
       };
     }); },
     saveTeacherConfig: function(pw,cfg){ run(function(){
@@ -1461,6 +1481,7 @@ function createMockRun(){
       }) };
     }); },
     getSheetUrl: function(pw){ run(function(){ check(pw); return state.sheetUrl; }); },
+    getDataVersion: function(pw){ run(function(){ check(pw); return mockVersion(); }); },
     getWebAppUrl: function(){ run(function(){ return ''; }); }
   };
   function run(fn){
@@ -1556,6 +1577,114 @@ window.addEventListener('beforeunload', function(e){
   e.preventDefault();
   e.returnValue = '';
 });
+
+/* ---- 구글 시트 변경 감지 (시트 → 화면 방향) ----
+   서버가 브라우저에 먼저 알릴 수 없어서, 탭이 보이는 동안 30초마다 시트 전체의 지문(getDataVersion)을 물어본다.
+   지문이 달라졌으면: 저장 안 한 변경이 없을 때는 열려 있는 화면을 그대로 다시 불러오고, 있을 때는 배너로 알린다.
+   내가 저장한 직후에는 기준 지문을 비워 두었다가(syncAdopt(null)) 다음 확인 값을 그대로 받아들여, 내 저장 때문에 화면이 다시 불러와지지 않게 한다. */
+var SYNC_INTERVAL_MS = 30000;
+var syncVersion = null;   // 마지막으로 확인한 지문 (null = 다음 값을 비교 없이 받아들임)
+var syncSeq = 0;          // 기준 지문을 바꿀 때마다 +1 — 그 전에 보낸 확인 요청의 응답은 버린다
+var syncTimer = null;
+var syncChecking = false;
+var syncLastAt = 0;
+
+function startSyncWatch(){ syncAdopt(null); scheduleSyncCheck(SYNC_INTERVAL_MS); }
+function stopSyncWatch(){ clearTimeout(syncTimer); syncTimer = null; syncVersion = null; syncSeq++; hideSyncBanner(); }
+function syncAdopt(version){ syncSeq++; syncVersion = version || null; }
+function syncAfterSave(){ syncAdopt(null); scheduleSyncCheck(0); }
+function scheduleSyncCheck(ms){ clearTimeout(syncTimer); syncTimer = setTimeout(syncCheck, ms); }
+function isSaving(){
+  return DIRTY_SAVE_ORDER.some(function(k){ return document.getElementById(DIRTY_SAVE_BTN[k]).querySelector('.btn-label').textContent === '저장 중...'; });
+}
+function syncCheck(){
+  syncTimer = null;
+  if (!TEACHER_PW) return;
+  if (document.hidden) return; // 탭이 안 보이면 멈추고, 다시 보일 때 syncOnReturn 이 재개한다
+  if (syncChecking || isSaving()){ scheduleSyncCheck(SYNC_INTERVAL_MS); return; }
+  syncChecking = true;
+  syncLastAt = Date.now();
+  var seq = syncSeq;
+  gs.withSuccessHandler(function(v){
+    syncChecking = false;
+    if (!TEACHER_PW) return;
+    if (seq === syncSeq){
+      if (syncVersion === null) syncVersion = v;
+      else if (v !== syncVersion){ syncVersion = v; onSheetChanged(); }
+    }
+    scheduleSyncCheck(SYNC_INTERVAL_MS);
+  }).withFailureHandler(function(){
+    syncChecking = false;
+    if (TEACHER_PW) scheduleSyncCheck(SYNC_INTERVAL_MS);
+  }).getDataVersion(TEACHER_PW);
+}
+function onSheetChanged(){
+  if (dirtyKeys().length === 0) refreshFromSheet();
+  else showSyncBanner();
+}
+// 탭으로 돌아오면 바로 확인한다 (방금 확인했으면 건너뜀)
+function syncOnReturn(){
+  if (!TEACHER_PW || document.hidden) return;
+  if (Date.now() - syncLastAt < 3000) return;
+  scheduleSyncCheck(0);
+}
+document.addEventListener('visibilitychange', syncOnReturn);
+window.addEventListener('focus', syncOnReturn);
+
+function showSyncBanner(){ document.getElementById('syncBanner').hidden = false; }
+function hideSyncBanner(){ document.getElementById('syncBanner').hidden = true; }
+document.getElementById('syncReloadBtn').addEventListener('click', function(){
+  if (!confirm('저장하지 않은 변경사항은 사라져요.\n구글 시트 내용으로 다시 불러올까요?')) return;
+  DIRTY_SAVE_ORDER.forEach(clearDirty);
+  hideSyncBanner();
+  refreshFromSheet();
+});
+
+// 시트가 바뀌었을 때 열려 있는 화면을 그대로 다시 불러온다: 설정(과목·영역·반 수)을 새로 받은 뒤,
+// 보고 있던 반의 점수표·결시표·명단, 비교·결시자 목록, 홈 통계를 같은 선택으로 다시 불러온다.
+function refreshFromSheet(){
+  var keep = {
+    home: !document.getElementById('homeView').hidden,
+    domainGrade: document.getElementById('domainGradeSelect').value,
+    scores: currentClassCtx ? { subject: currentClassCtx.subject, grade: currentClassCtx.grade, cls: currentClassCtx.class } : null,
+    attendance: currentAttendanceCtx ? { subject: currentAttendanceCtx.subject, grade: currentAttendanceCtx.grade, cls: currentAttendanceCtx.class } : null,
+    roster: currentRosterCtx ? { grade: currentRosterCtx.grade, cls: currentRosterCtx.class } : null,
+    compare: compareData ? document.getElementById('compareDomainSelect').value : null,
+    notice: noticeData ? document.getElementById('noticeDomainSelect').value : null
+  };
+  gs.withSuccessHandler(function(cfg){
+    applyConfigToForm(cfg);
+    syncAdopt(cfg.dataVersion);
+    hideSyncBanner();
+    if (keep.home) loadHomeStats();
+    if (restoreSelect('domainGradeSelect', keep.domainGrade)) refreshDomainPanel();
+    if (keep.scores && selectedScoreSubject === keep.scores.subject && restorePick('pickGrade', 'pickClass', keep.scores))
+      loadClassScoresView(keep.scores.subject, keep.scores.grade, keep.scores.cls);
+    if (keep.attendance && selectedAttendanceSubject === keep.attendance.subject && restorePick('attendancePickGrade', 'attendancePickClass', keep.attendance))
+      loadAttendanceView(keep.attendance.subject, keep.attendance.grade, keep.attendance.cls);
+    if (keep.roster && restorePick('rosterPickGrade', 'rosterPickClass', keep.roster))
+      loadRosterView(keep.roster.grade, keep.roster.cls);
+    if (keep.compare !== null){ restoreSelect('compareDomainSelect', keep.compare); loadCompareView(); }
+    if (keep.notice !== null){ restoreSelect('noticeDomainSelect', keep.notice); loadNoticeView(selectedNoticeSubject); }
+    showToast('구글 시트에서 바뀐 내용을 반영했어요.');
+  }).withFailureHandler(function(){
+    showToast('구글 시트의 변경을 불러오지 못했어요.', true);
+  }).getTeacherConfig(TEACHER_PW);
+}
+// 다시 그린 드롭다운에 예전 값이 아직 있으면 그 값으로 되돌린다
+function restoreSelect(id, value){
+  var sel = document.getElementById(id);
+  if (!Array.from(sel.options).some(function(o){ return o.value === String(value); })) return false;
+  sel.value = value;
+  return true;
+}
+// 학년 → 반 순서로 되돌린다 (학년을 고르면 반 목록이 채워지므로 onchange 를 거친다)
+function restorePick(gradeId, classId, ctx){
+  if (!restoreSelect(gradeId, ctx.grade)) return false;
+  var gSel = document.getElementById(gradeId);
+  if (gSel.onchange) gSel.onchange();
+  return restoreSelect(classId, ctx.cls);
+}
 function rangeArray(start, end){
   var arr = []; start = Number(start); end = Number(end);
   if (isNaN(start) || isNaN(end)) return arr;
@@ -1814,6 +1943,7 @@ new ResizeObserver(function(){
 
 function doLogout(){
   DIRTY_SAVE_ORDER.forEach(clearDirty);
+  stopSyncWatch();
   TEACHER_PW = '';
   currentConfig = null;
   document.getElementById('dashboard').hidden = true;
@@ -1870,6 +2000,7 @@ document.getElementById('gateForm').addEventListener('submit', function(e){
     document.getElementById('dashboard').hidden = false;
     showHome();
     loadDashboard();
+    startSyncWatch();
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '확인');
     errEl.textContent = '확인 중 오류가 발생했어요. 다시 시도해주세요.';
@@ -1878,7 +2009,10 @@ document.getElementById('gateForm').addEventListener('submit', function(e){
 });
 
 function loadDashboard(){
-  gs.withSuccessHandler(applyConfigToForm).withFailureHandler(function(){
+  gs.withSuccessHandler(function(cfg){
+    applyConfigToForm(cfg);
+    syncAdopt(cfg.dataVersion); // 방금 받은 설정을 기준으로 시트 변경을 감지한다
+  }).withFailureHandler(function(){
     showToast('설정을 불러오지 못했어요.', true);
   }).getTeacherConfig(TEACHER_PW);
 }
@@ -1910,6 +2044,9 @@ document.getElementById('loadRosterBtn').addEventListener('click', function(){
   var g = document.getElementById('rosterPickGrade').value;
   var c = document.getElementById('rosterPickClass').value;
   if (!g || !c){ showToast('학년과 반을 선택해주세요.', true); return; }
+  loadRosterView(g, c);
+});
+function loadRosterView(g, c){
   var list = document.getElementById('rosterList');
   list.innerHTML = '<div class="empty-state">불러오는 중...</div>';
   document.getElementById('addStudentBtn').hidden = true;
@@ -1920,7 +2057,7 @@ document.getElementById('loadRosterBtn').addEventListener('click', function(){
   }).withFailureHandler(function(){
     list.innerHTML = '<div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div>';
   }).getRosterForClass(TEACHER_PW, g, c);
-});
+}
 
 function renderRosterList(res, g, c){
   currentRosterCtx = { grade:g, class:c };
@@ -1987,6 +2124,7 @@ document.getElementById('saveRosterBtn').addEventListener('click', function(){
     document.getElementById('rosterSavedHint').textContent = '마지막 저장: 방금 전';
     lastSavedRosterNumbers = newNumbers;
     clearDirty('roster');
+    syncAfterSave();
     rosterAll = null; // 수업 과목 설정의 학생 검색이 바뀐 명단을 다시 불러오게
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '저장');
@@ -2528,6 +2666,7 @@ document.getElementById('saveConfigBtn').addEventListener('click', function(){
       setBtnLoading(btn, false, '저장');
       showToast('수업 과목이 저장됐어요.');
       clearDirty('config');
+      syncAdopt(null); // loadDashboard 가 새 기준 지문을 받아온다
       loadDashboard();
     }).withFailureHandler(function(){
       setBtnLoading(btn, false, '저장');
@@ -2732,6 +2871,7 @@ document.getElementById('saveDomainsBtn').addEventListener('click', function(){
       setBtnLoading(btn, false, '저장');
       showToast('수행 영역이 저장됐어요.');
       clearDirty('domains');
+      syncAdopt(null); // loadDashboard 가 새 기준 지문을 받아온다
       loadDashboard();
     }).withFailureHandler(function(){
       setBtnLoading(btn, false, '저장');
@@ -2792,6 +2932,9 @@ document.getElementById('loadAttendanceBtn').addEventListener('click', function(
   var c = document.getElementById('attendancePickClass').value;
   if (!subject){ showToast('먼저 수업 과목을 추가해주세요.', true); return; }
   if (!g || !c){ showToast('학년과 반을 선택해주세요.', true); return; }
+  loadAttendanceView(subject, g, c);
+});
+function loadAttendanceView(subject, g, c){
   var body = document.getElementById('attendanceTableBody');
   body.innerHTML = '<tr><td colspan="99"><div class="empty-state">불러오는 중...</div></td></tr>';
   document.getElementById('saveAttendanceBtn').disabled = true;
@@ -2812,7 +2955,7 @@ document.getElementById('loadAttendanceBtn').addEventListener('click', function(
   }).withFailureHandler(function(){
     body.innerHTML = '<tr><td colspan="99"><div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div></td></tr>';
   }).getAttendanceForClass(TEACHER_PW, subject, g, c);
-});
+}
 
 function renderAttendanceTable(res, subject, g, c){
   clearDirty('attendance');
@@ -3033,6 +3176,7 @@ document.getElementById('saveAttendanceBtn').addEventListener('click', function(
     setBtnLoading(btn, false, '저장');
     showToast('응시·결시 현황이 저장됐어요.');
     clearDirty('attendance');
+    syncAfterSave();
     document.getElementById('attendanceSavedHint').textContent = '마지막 저장: 방금 전';
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '저장');
@@ -3090,6 +3234,9 @@ document.getElementById('loadClassBtn').addEventListener('click', function(){
   var c = document.getElementById('pickClass').value;
   if (!subject){ showToast('과목을 선택해주세요.', true); return; }
   if (!g || !c){ showToast('학년과 반을 선택해주세요.', true); return; }
+  loadClassScoresView(subject, g, c);
+});
+function loadClassScoresView(subject, g, c){
   var body = document.getElementById('scoreTableBody');
   body.innerHTML = '<tr><td colspan="99"><div class="empty-state">불러오는 중...</div></td></tr>';
   document.getElementById('scoreTableFoot').innerHTML = '';
@@ -3108,7 +3255,7 @@ document.getElementById('loadClassBtn').addEventListener('click', function(){
   }).withFailureHandler(function(){
     body.innerHTML = '<tr><td colspan="99"><div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div></td></tr>';
   }).getClassScores(TEACHER_PW, subject, g, c);
-});
+}
 
 function buildColgroup(domainCount, withTotal){
   return '<colgroup><col style="width:52px"><col style="width:64px">' +
@@ -3398,6 +3545,7 @@ document.getElementById('saveScoresBtn').addEventListener('click', function(){
     setBtnLoading(btn, false, '전체 저장');
     showToast('점수가 저장됐어요.');
     clearDirty('scores');
+    syncAfterSave();
     document.getElementById('lastSavedHint').textContent = '마지막 저장: 방금 전';
   }).withFailureHandler(function(){
     setBtnLoading(btn, false, '전체 저장');
@@ -3429,6 +3577,9 @@ function onCompareSubjectChange(){
 
 document.getElementById('loadCompareBtn').addEventListener('click', function(){
   if (!selectedCompareSubject){ showToast('먼저 수업 과목을 추가해주세요.', true); return; }
+  loadCompareView();
+});
+function loadCompareView(){
   var box = document.getElementById('compareResult');
   box.innerHTML = '<div class="empty-state">불러오는 중...</div>';
   gs.withSuccessHandler(function(res){
@@ -3437,7 +3588,7 @@ document.getElementById('loadCompareBtn').addEventListener('click', function(){
   }).withFailureHandler(function(){
     box.innerHTML = '<div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div>';
   }).getSubjectAverages(TEACHER_PW, selectedCompareSubject);
-});
+}
 
 function fmtAvg(v){ return String(Math.round(v * 10) / 10); }
 
@@ -3508,6 +3659,9 @@ function onNoticeSubjectChange(){
 document.getElementById('loadNoticeBtn').addEventListener('click', function(){
   var subject = selectedNoticeSubject;
   if (!subject){ showToast('먼저 수업 과목을 추가해주세요.', true); return; }
+  loadNoticeView(subject);
+});
+function loadNoticeView(subject){
   var list = document.getElementById('noticeList');
   list.innerHTML = '<div class="empty-state">불러오는 중...</div>';
   document.getElementById('makeNoticePdfBtn').disabled = true;
@@ -3518,7 +3672,7 @@ document.getElementById('loadNoticeBtn').addEventListener('click', function(){
   }).withFailureHandler(function(){
     list.innerHTML = '<div class="empty-state">불러오지 못했어요. 다시 시도해주세요.</div>';
   }).getAbsentees(TEACHER_PW, subject);
-});
+}
 var NOTICE_MEMO_MIN_W = 150;
 var NOTICE_MEMO_MAX_W = NOTICE_MEMO_MIN_W * 4;
 var noticeMemoCtx = document.createElement('canvas').getContext('2d');

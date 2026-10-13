@@ -629,6 +629,7 @@ loginForm.addEventListener('submit', function(e){
   gs.withSuccessHandler(function(res){
     setLoading(false);
     if (!res.ok){ showError(res.error); return; }
+    lastLookup = { g:g, c:c, n:n, name:name };
     renderResult(res);
     goTo(screenResult);
   }).withFailureHandler(function(err){
@@ -770,6 +771,34 @@ function setupCarousel(container){
 gs.withSuccessHandler(initRoster).withFailureHandler(function(){
   showError('학생 명단을 불러오지 못했습니다. 관리자에게 문의해주세요.');
 }).getRosterOptions();
+
+/* ---- 탭으로 돌아왔을 때 새로고침 (시트 → 화면 방향) ----
+   교사가 구글 시트나 교사 화면에서 고친 내용이 여기에도 보이도록, 탭을 떠났다가 돌아오면 학년·반·번호 목록을 다시 받고,
+   결과 화면이 열려 있으면 같은 학생을 다시 조회한다. 주기적으로 확인하지는 않는다 (학생 수백 명이 동시에 열어 둘 수 있어서). */
+var lastLookup = null;             // 마지막으로 조회한 { g, c, n, name }
+var lastReturnRefreshAt = Date.now();
+function refreshOnReturn(){
+  if (document.hidden) return;
+  if (Date.now() - lastReturnRefreshAt < 5000) return;
+  lastReturnRefreshAt = Date.now();
+  var g = gradeSelect.value, c = classSelect.value, n = numberSelect.value;
+  gs.withSuccessHandler(function(data){
+    initRoster(data);
+    // 고르던 학년·반·번호가 아직 명단에 있으면 그대로 둔다
+    gradeSelect.value = (g && data.byGrade[g]) ? g : '';
+    gradeSelect.dispatchEvent(new Event('change'));
+    if (!gradeSelect.value) return;
+    classSelect.value = (c && data.byGrade[g].byClass[c]) ? c : '';
+    classSelect.dispatchEvent(new Event('change'));
+    if (classSelect.value) numberSelect.value = n;
+  }).getRosterOptions();
+  if (lastLookup && screenResult.classList.contains('active')){
+    gs.withSuccessHandler(function(res){ if (res.ok) renderResult(res); })
+      .getStudentResult(lastLookup.g, lastLookup.c, lastLookup.n, lastLookup.name);
+  }
+}
+document.addEventListener('visibilitychange', refreshOnReturn);
+window.addEventListener('focus', refreshOnReturn);
 
 // 배포 환경에서는 교사 화면이 <배포 주소>?page=teacher 로 열림 (로컬 미리보기는 teacher.html 유지)
 gs.withSuccessHandler(function(url){
