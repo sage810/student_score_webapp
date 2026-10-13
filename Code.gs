@@ -29,6 +29,8 @@
  *   점수_과목명 : 과목명 | 학년 | 반 | 번호 | 이름 | <영역1> | <영역2> | ... | 합계  ("합계"는 맨 오른쪽 열, 영역 점수의 SUM 수식 — 결시·빈 칸은 합에서 빠짐. 영역이 추가되어도 합계 열 앞에 끼워져 항상 맨 오른쪽에 있음. 영역 이름을 "합계"로 짓지 말 것)  (과목명이 다르면 시트도 다름 — 예: "점수_기술·가정". 없으면 처음 저장할 때 자동으로 만들어지고, 예전 통합 "점수" 시트에 그 과목 기록이 있으면 자동으로 옮겨 옴. 시트 이름에 못 쓰는 글자 : \ / ? * [ ] 는 _ 로 바뀜. 빈 칸 = 미실시, "결시" = 응시·결시 관리에서 결시로 표시한 항목 — 총점 계산은 미실시와 동일하게 취급. 예전에 저장된 "결시:날짜" 형식도 결시로 인식하며, 저장하면 "결시"로 정리됨)
  *   (점수_과목명·결시명단_과목명 시트는 저장할 때마다 학년 → 반 → 번호 오름차순으로 정렬됨. 반·번호는 숫자로 비교해서 2반이 10반보다 앞)
  *   결시명단_과목명 : 영역 | 학년 | 반 | 번호 | 이름  — 그 과목에서 결시로 체크된 학생 목록 (과목마다 별도 시트. 응시·결시 관리에서 저장할 때마다 그 반·그 영역들 범위 안에서 다시 채워짐)
+ *   QR코드 : 토큰 | 과목ID | 학년 | 반 | 번호 | 이름 | 발급일시 | 상태  — 교사 화면 "학생 점수 조회 QR"에서 반 학생마다 발급한 토큰.
+ *          학생이 QR(<배포 주소>?qr=토큰)을 찍으면 상태가 "열림"일 때만 그 과목의 점수를 보여주고, "마감"이면 안내만 함. 마감한 뒤 다시 생성하면 새 토큰이 추가됨
  */
 
 var MAX_SUBJECTS = 5;
@@ -190,6 +192,11 @@ function ensureSheets_() {
     if (String(memo.getRange(1, 5).getValue()) !== '메모') memo.getRange(1, 5).setValue('메모');
   }
 
+  // 학생 점수 조회 QR: 발급한 토큰과 상태(열림/마감)
+  if (!ss.getSheetByName(QR_SHEET)) {
+    ss.insertSheet(QR_SHEET).getRange(1, 1, 1, QR_HEADER.length).setValues([QR_HEADER]);
+  }
+
   if (legacyCurrent.length) {
     // 아주 예전 형식의 "현재영역"은 그 영역의 상태를 "이번 수행"으로 바꿔서 옮긴다(이미 완료·이번 수행이면 그대로 둠).
     var domLast = dom.getLastRow();
@@ -211,6 +218,9 @@ var DOMAIN_HEADER = ['과목ID', '영역명', '배점', '그룹', '상태', '급
 var MEMO_SHEET = '영역메모';
 var LEGACY_MEMO_SHEET = '진행상태'; // 영역메모 시트의 예전 이름 (반별 상태도 함께 들어 있던 시절)
 var MEMO_HEADER = ['과목ID', '학년', '반', '영역명', '메모'];
+var QR_SHEET = 'QR코드';
+var QR_HEADER = ['토큰', '과목ID', '학년', '반', '번호', '이름', '발급일시', '상태'];
+var QR_OPEN = '열림', QR_CLOSED = '마감';
 
 // "영역" 시트 상태 열(E열)에 완료/이번 수행/예정 드롭다운을 건다. 시트에서 직접 고칠 때도 이 세 값만 들어가게 한다.
 // 급간 열(F열)에도 1~10 드롭다운을 건다 (비워 두면 점수 입력표에서 드롭다운 없이 직접 입력).
@@ -589,7 +599,7 @@ function verifyTeacherPassword(password) {
 
 // 앱이 쓰는 시트만 본다 (교사가 따로 만든 시트의 =NOW() 같은 수식 때문에 헛 감지되지 않게)
 function isAppSheet_(name) {
-  return ['설정', '과목', '영역', '명단', MEMO_SHEET].indexOf(name) !== -1 ||
+  return ['설정', '과목', '영역', '명단', MEMO_SHEET, QR_SHEET].indexOf(name) !== -1 ||
     name.indexOf('점수_') === 0 || name.indexOf('결시명단_') === 0 || name.indexOf(ENROLL_PREFIX + '_') === 0;
 }
 // 시트마다 값과 지문을 한 번에 읽는다. 지문 확인과 스냅샷이 같은 값을 보도록 둘 다 여기서 만든다.
@@ -663,7 +673,9 @@ function getRosterOptions() {
 }
 
 function getStudentResult(grade, cls, number, name) {
-  var ss = ensureSheets_();
+  return studentResult_(ensureSheets_(), grade, cls, number, name);
+}
+function studentResult_(ss, grade, cls, number, name) {
   var roster = ss.getSheetByName('명단');
   var data = roster.getRange(2, 1, Math.max(roster.getLastRow() - 1, 0), 4).getValues();
 
@@ -753,6 +765,103 @@ function getStudentResult(grade, cls, number, name) {
     name: studentName,
     subjects: subjects
   };
+}
+
+/* ---------- 학생 점수 조회 QR ---------- */
+// "QR코드" 시트: 토큰 | 과목ID | 학년 | 반 | 번호 | 이름 | 발급일시 | 상태. 학생이 QR을 찍으면 토큰으로 이 시트를 찾아 점수를 보여준다.
+function qrRows_(ss) {
+  var sheet = ss.getSheetByName(QR_SHEET);
+  return sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, QR_HEADER.length).getValues() : [];
+}
+function qrMatches_(r, instance, grade, cls) {
+  return String(r[1]) === instance.id && String(r[2]) === String(grade) && String(r[3]) === String(cls);
+}
+// { open: 열린 QR 수, closed: 마감된 수, issuedAt: 열린 QR의 발급일시 }
+function qrStatus_(ss, instance, grade, cls) {
+  var open = 0, closed = 0, issuedAt = '';
+  qrRows_(ss).forEach(function (r) {
+    if (!qrMatches_(r, instance, grade, cls)) return;
+    if (String(r[7]) === QR_OPEN) { open++; issuedAt = String(r[6]); } else closed++;
+  });
+  return { open: open, closed: closed, issuedAt: issuedAt };
+}
+function getQrStatus(password, subject, grade, cls) {
+  var ss = ensureSheets_();
+  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
+  var instance = resolveSubjectInstance_(getSubjects_(ss), subject, grade, cls);
+  return instance ? qrStatus_(ss, instance, grade, cls) : { open: 0, closed: 0, issuedAt: '' };
+}
+// 그 반의 학생마다 QR 토큰을 발급한다. 이미 열린 토큰이 있는 학생은 그대로 다시 쓴다(같은 QR을 다시 인쇄할 수 있게).
+function issueQrCodes(password, subject, grade, cls) {
+  var ss = ensureSheets_();
+  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
+  var instance = resolveSubjectInstance_(getSubjects_(ss), subject, grade, cls);
+  if (!instance) throw new Error('해당 과목·학년·반을 찾을 수 없습니다.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var roster = ss.getSheetByName('명단');
+    var students = roster.getRange(2, 1, Math.max(roster.getLastRow() - 1, 0), 4).getValues()
+      .filter(function (r) { return String(r[0]) === String(grade) && String(r[1]) === String(cls) && isEnrolled_(instance, grade, cls, r[2]); })
+      .sort(function (a, b) { return Number(a[2]) - Number(b[2]); });
+    var open = {};
+    qrRows_(ss).forEach(function (r) { if (qrMatches_(r, instance, grade, cls) && String(r[7]) === QR_OPEN) open[String(r[4])] = r; });
+    var issuedAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+    var newRows = [];
+    var out = students.map(function (r) {
+      var num = String(r[2]), had = open[num];
+      if (had) return { number: num, name: String(r[3]), token: String(had[0]) };
+      var token = Utilities.getUuid().replace(/-/g, '').slice(0, 20);
+      newRows.push([token, instance.id, r[0], r[1], r[2], r[3], issuedAt, QR_OPEN]);
+      return { number: num, name: String(r[3]), token: token };
+    });
+    if (newRows.length) {
+      var sheet = ss.getSheetByName(QR_SHEET);
+      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, QR_HEADER.length).setValues(newRows);
+    }
+    return {
+      subject: subject, grade: String(grade), cls: String(cls), url: ScriptApp.getService().getUrl(),
+      students: out, created: newRows.length, status: qrStatus_(ss, instance, grade, cls)
+    };
+  } finally {
+    lock.releaseLock();
+  }
+}
+// 그 반의 열린 QR을 모두 마감한다. 마감된 QR을 찍으면 점수가 보이지 않는다.
+function closeQrCodes(password, subject, grade, cls) {
+  var ss = ensureSheets_();
+  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
+  var instance = resolveSubjectInstance_(getSubjects_(ss), subject, grade, cls);
+  if (!instance) throw new Error('해당 과목·학년·반을 찾을 수 없습니다.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var rows = qrRows_(ss);
+    var closed = 0;
+    var statusCol = rows.map(function (r) {
+      if (qrMatches_(r, instance, grade, cls) && String(r[7]) === QR_OPEN) { closed++; return [QR_CLOSED]; }
+      return [r[7]];
+    });
+    if (rows.length) ss.getSheetByName(QR_SHEET).getRange(2, QR_HEADER.length, rows.length, 1).setValues(statusCol);
+    return { closed: closed, status: qrStatus_(ss, instance, grade, cls) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+// 학생이 QR을 찍었을 때: 토큰이 열려 있으면 그 학생의 점수를, QR을 만든 과목만 담아 돌려준다.
+function getStudentResultByQr(token) {
+  var ss = ensureSheets_();
+  var t = String(token || '').trim();
+  var row = t ? qrRows_(ss).filter(function (r) { return String(r[0]) === t; })[0] : null;
+  if (!row) return { ok: false, error: 'QR 코드를 찾을 수 없어요. 선생님께 문의해주세요.' };
+  if (String(row[7]) !== QR_OPEN) return { ok: false, closed: true, error: '이 QR 코드는 마감되었어요. 아래에서 학년·반·번호로 조회해 보세요.' };
+  var instance = getSubjects_(ss).filter(function (s) { return s.id === String(row[1]); })[0];
+  var res = studentResult_(ss, row[2], row[3], row[4], '');
+  if (!res.ok) return res;
+  if (instance) res.subjects = res.subjects.filter(function (s) { return s.subject === instance.name; });
+  if (!res.subjects.length) return { ok: false, error: '이 QR 코드의 과목이 더 이상 없어요. 선생님께 문의해주세요.' };
+  res.qrSubject = instance ? instance.name : '';
+  return res;
 }
 
 /* ---------- 교사용 ---------- */

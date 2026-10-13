@@ -661,6 +661,35 @@
   .sync-modal-empty{ padding:24px 16px; text-align:center; font-size:13px; color:var(--ink-soft); line-height:1.5; }
   .sync-modal-hint{ margin:12px 0 0; font-size:12.5px; color:var(--ink-soft); line-height:1.5; }
   .sync-modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  /* 학생 점수 조회 QR: 화면 미리보기(격자)와 인쇄용(A4 한 장 4×4, #noticePrintArea 에 그려 인쇄) */
+  .qr-actions{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .qr-status{ font-size:12.5px; color:var(--ink-soft); margin:0 0 16px; min-height:1.2em; }
+  .qr-preview[hidden]{ display:none; }
+  .qr-preview{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:12px; margin-bottom:16px; }
+  .qr-card{ border:1px solid var(--border); border-radius:12px; padding:12px 8px; display:flex; flex-direction:column; align-items:center; gap:4px; text-align:center; }
+  .qr-card .qr-img{ width:110px; height:110px; }
+  .qr-img svg{ width:100%; height:100%; display:block; }
+  .qr-card .qr-subject{ font-size:11.5px; color:var(--ink-soft); }
+  .qr-card .qr-who{ font-size:12.5px; font-weight:600; color:var(--ink-soft); }
+  .qr-card .qr-name{ font-size:14px; font-weight:800; }
+  .qr-card .qr-hint{ display:none; }
+  .qr-page{
+    width:170mm; height:240mm; margin:0 auto; box-sizing:border-box;
+    display:grid; grid-template-columns:repeat(4, 1fr); grid-template-rows:repeat(4, 1fr);
+    break-after:page; page-break-after:always; background:#fff;
+  }
+  .qr-page:last-child{ break-after:auto; page-break-after:auto; }
+  .qr-cell{
+    box-sizing:border-box; border:0.3mm dashed #555; padding:2.5mm 2mm; overflow:hidden;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1mm; text-align:center;
+    font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; color:#000; line-height:1.3;
+  }
+  .qr-cell.blank{ border-color:transparent; }
+  .qr-cell .qr-img{ width:30mm; height:30mm; }
+  .qr-cell .qr-subject{ font-size:8.5pt; }
+  .qr-cell .qr-who{ font-size:9.5pt; font-weight:700; }
+  .qr-cell .qr-name{ font-size:12pt; font-weight:800; }
+  .qr-cell .qr-hint{ font-size:6.5pt; color:#444; }
   .toast{
     position:fixed; left:50%; bottom:32px; transform:translateX(-50%);
     background: var(--ink); color:#fff; font-size:13px; font-weight:500;
@@ -772,6 +801,10 @@
   <button type="button" data-section="notice">
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 7l8 6 8-6"/></svg></span>
     <span class="sb-label">결시자 수행안내</span>
+  </button>
+  <button type="button" data-section="qr">
+    <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 14h2M14 18h2M18 18h2v2"/></svg></span>
+    <span class="sb-label">학생 점수 조회 QR</span>
   </button>
   <button type="button" data-section="xlsxExport">
     <span class="sb-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5v11M8 11l4 4 4-4"/><path d="M4.5 16v2.5A2 2 0 0 0 6.5 20.5h11a2 2 0 0 0 2-2V16"/></svg></span>
@@ -1135,11 +1168,55 @@
     </div>
   </section>
 
-  <!-- 8. 엑셀 파일 다운로드 -->
+  <!-- 8. 학생 점수 조회 QR -->
+  <section class="card" id="section-qr" hidden>
+    <button type="button" class="card-head-btn" data-section="qr">
+      <span class="card-head-left">
+        <h2><span class="step-no">8</span>학생 점수 조회 QR</h2>
+        <span class="card-desc">반 학생마다 QR을 만들어 나눠주면, 찍어서 자기 점수(이 과목만)를 볼 수 있어요. 마감하면 더는 보이지 않아요.</span>
+      </span>
+      <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div class="card-body" hidden>
+      <div class="picker-row">
+        <div class="field">
+          <label for="qrSubjectBtn">과목</label>
+          <div class="combo">
+            <button type="button" class="combo-btn" id="qrSubjectBtn" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-controls="qrSubjectList">선택</button>
+            <ul class="combo-list" id="qrSubjectList" role="listbox" aria-label="과목" hidden></ul>
+            <select id="qrSubjectSelect" hidden></select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="qrGradeSelect">학년</label>
+          <select id="qrGradeSelect"><option value="">선택</option></select>
+        </div>
+        <div class="field">
+          <label for="qrClassSelect">반</label>
+          <select id="qrClassSelect"><option value="">선택</option></select>
+        </div>
+        <button class="btn-primary" id="makeQrBtn">
+          <span class="btn-label">QR 생성하기</span>
+          <span class="spinner" hidden></span>
+        </button>
+      </div>
+      <p class="qr-status" id="qrStatus"></p>
+      <div class="qr-preview" id="qrPreview" hidden></div>
+      <div class="qr-actions">
+        <button class="btn-primary" id="printQrBtn" disabled><span class="btn-label">인쇄 · PDF로 저장</span></button>
+        <button class="btn-secondary" id="closeQrBtn" disabled>QR 코드 마감하기</button>
+      </div>
+      <p class="subject-hint">A4 한 장에 4행×4열(16칸)로 나와요. 인쇄 창에서 "PDF로 저장"을 고르면 파일로도 남길 수 있어요. 같은 반에서 다시 "QR 생성하기"를 누르면 열려 있는 QR을 그대로 다시 보여주고, 마감한 뒤에 누르면 새 QR을 만들어요.</p>
+    </div>
+  </section>
+
+  <!-- 9. 엑셀 파일 다운로드 -->
   <section class="card" id="section-xlsxExport" hidden>
     <button type="button" class="card-head-btn" data-section="xlsxExport">
       <span class="card-head-left">
-        <h2><span class="step-no">8</span>엑셀 파일 다운로드</h2>
+        <h2><span class="step-no">9</span>엑셀 파일 다운로드</h2>
         <span class="card-desc">과목·학년·반을 고르면 그 반·번호·성명과 영역별 점수를 담은 제출용 엑셀 파일을 만들어요.</span>
       </span>
       <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -1204,6 +1281,7 @@
 <div id="noticePrintArea" aria-hidden="true"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
 /* ---- google.script.run 이 없는 로컬/미리보기 환경을 위한 목업 (실제 배포 시엔 사용되지 않음) ---- */
 function createMockRun(){
@@ -1313,6 +1391,16 @@ function createMockRun(){
     });
   }
   function isAbsentValue(raw){ return raw === ABSENT_MARKER || String(raw).indexOf(ABSENT_MARKER + ':') === 0; }
+  // 학생 점수 조회 QR 흉내: [{ token, subjectId, grade, cls, number, name, issuedAt, status }]
+  state.qr = [];
+  function qrStatus(subject, g, c){
+    var s = resolveSubjectInstance(subject, g, c), open = 0, closed = 0, issuedAt = '';
+    state.qr.forEach(function(q){
+      if (!s || q.subjectId !== s.id || q.grade !== String(g) || q.cls !== String(c)) return;
+      if (q.status === '열림'){ open++; issuedAt = q.issuedAt; } else closed++;
+    });
+    return { open:open, closed:closed, issuedAt:issuedAt };
+  }
   var handlers = {};
   var api = {
     withSuccessHandler: function(fn){ handlers.success = fn; return api; },
@@ -1523,6 +1611,30 @@ function createMockRun(){
     getSheetUrl: function(pw){ run(function(){ check(pw); return state.sheetUrl; }); },
     getDataVersion: function(pw){ run(function(){ check(pw); var v = mockVersion(); return { all:v, sheets:{ '목업':v } }; }); },
     getSheetSnapshot: function(pw, known){ run(function(){ check(pw); var v = mockVersion(); return { version:{ all:v, sheets:{ '목업':v } }, names:['목업'], values:{} }; }); },
+    getQrStatus: function(pw,subject,g,c){ run(function(){ check(pw); return qrStatus(subject, g, c); }); },
+    issueQrCodes: function(pw,subject,g,c){ run(function(){
+      check(pw);
+      var s = resolveSubjectInstance(subject, g, c);
+      var now = new Date().toISOString().slice(0, 16).replace('T', ' ');
+      var created = 0;
+      var students = studentsFor(subject, g+'-'+c, s).map(function(st){
+        var had = state.qr.filter(function(q){ return q.subjectId === s.id && q.grade === String(g) && q.cls === String(c) && q.number === String(st.number) && q.status === '열림'; })[0];
+        if (!had){
+          had = { token:'mock' + Math.random().toString(36).slice(2, 12), subjectId:s.id, grade:String(g), cls:String(c), number:String(st.number), name:st.name, issuedAt:now, status:'열림' };
+          state.qr.push(had); created++;
+        }
+        return { number:String(st.number), name:st.name, token:had.token };
+      });
+      return { subject:subject, grade:String(g), cls:String(c), url:'', students:students, created:created, status:qrStatus(subject, g, c) };
+    }); },
+    closeQrCodes: function(pw,subject,g,c){ run(function(){
+      check(pw);
+      var s = resolveSubjectInstance(subject, g, c), closed = 0;
+      state.qr.forEach(function(q){
+        if (s && q.subjectId === s.id && q.grade === String(g) && q.cls === String(c) && q.status === '열림'){ q.status = '마감'; closed++; }
+      });
+      return { closed:closed, status:qrStatus(subject, g, c) };
+    }); },
     getWebAppUrl: function(){ run(function(){ return ''; }); }
   };
   function run(fn){
@@ -1762,6 +1874,7 @@ function syncKeyColumns(name, header){
   else if (name === '영역메모') want = ['과목ID', '학년', '반', '영역명'];
   else if (name === '명단' || name.indexOf('출석명단_') === 0 || name.indexOf('점수_') === 0) want = ['학년', '반', '번호'];
   else if (name.indexOf('결시명단_') === 0) want = ['영역', '학년', '반', '번호'];
+  else if (name === 'QR코드') want = ['토큰'];
   if (!want) return null;
   var idx = want.map(function(w){ return typeof w === 'number' ? w : header.indexOf(w); });
   return idx.some(function(i){ return i < 0; }) ? null : idx;
@@ -1830,7 +1943,7 @@ function describeRow(name, header, row){
 }
 // 추가된 행: 이름에 쓰인 열 말고 값이 있는 열 몇 개를 덧붙인다 (예: 배점 10 · 상태 예정 · 급간 2)
 function syncAddSummary(sh, row){
-  var skip = ['학년', '반', '번호', '이름', '과목ID', '과목명', '영역', '영역명', '합계', 'ID'];
+  var skip = ['학년', '반', '번호', '이름', '과목ID', '과목명', '영역', '영역명', '합계', 'ID', '토큰'];
   var parts = [];
   sh.header.forEach(function(h, i){
     if (parts.length >= 3 || !h || skip.indexOf(h) !== -1 || (sh.keyCols && sh.keyCols.indexOf(i) !== -1)) return;
@@ -1870,7 +1983,8 @@ function refreshFromSheet(count){
     attendance: currentAttendanceCtx ? { subject: currentAttendanceCtx.subject, grade: currentAttendanceCtx.grade, cls: currentAttendanceCtx.class } : null,
     roster: currentRosterCtx ? { grade: currentRosterCtx.grade, cls: currentRosterCtx.class } : null,
     compare: compareData ? document.getElementById('compareDomainSelect').value : null,
-    notice: noticeData ? document.getElementById('noticeDomainSelect').value : null
+    notice: noticeData ? document.getElementById('noticeDomainSelect').value : null,
+    qr: qrSelection(), qrBatch: qrBatch
   };
   gs.withSuccessHandler(function(cfg){
     applyConfigToForm(cfg);
@@ -1884,6 +1998,10 @@ function refreshFromSheet(count){
       loadRosterView(keep.roster.grade, keep.roster.cls);
     if (keep.compare !== null){ restoreSelect('compareDomainSelect', keep.compare); loadCompareView(); }
     if (keep.notice !== null){ restoreSelect('noticeDomainSelect', keep.notice); loadNoticeView(selectedNoticeSubject); }
+    if (keep.qr && selectedQrSubject === keep.qr.subject && restorePick('qrGradeSelect', 'qrClassSelect', keep.qr)){
+      if (keep.qrBatch){ qrBatch = keep.qrBatch; renderQrPreview(qrBatch); }
+      loadQrStatus();
+    }
     showToast(count ? '구글 시트에서 바뀐 내용 ' + count + '건을 반영했어요.' : '구글 시트의 내용을 다시 불러왔어요.');
   }).withFailureHandler(function(){
     showToast('구글 시트의 변경을 불러오지 못했어요.', true);
@@ -1927,6 +2045,7 @@ var selectedAttendanceSubject = '';
 var selectedNoticeSubject = '';
 var selectedCompareSubject = '';
 var selectedXlsxExportSubject = '';
+var selectedQrSubject = '';
 var compareData = null; // { classes:[{grade,cls,domains:[{name,max,n,avg}],total:{max,n,avg}}] }
 var noticeData = null; // { rows:[{domain,grade,cls,number,name}], domains:[...] }
 var currentClassCtx = null;
@@ -1934,7 +2053,7 @@ var currentRosterCtx = null;
 var currentAttendanceCtx = null;
 
 /* ---- 아코디언(학생 명단 관리 / 수업 과목 설정 / 수행 영역 관리 / 응시·결시 관리 / 반별 점수 입력 표) ---- */
-var SECTION_KEYS = ['roster', 'config', 'domains', 'attendance', 'scores', 'compare', 'notice', 'xlsxExport'];
+var SECTION_KEYS = ['roster', 'config', 'domains', 'attendance', 'scores', 'compare', 'notice', 'qr', 'xlsxExport'];
 var sectionEls = {};
 
 function setupAccordion(){
@@ -1991,6 +2110,8 @@ var HOME_SECTIONS = [
     icon:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>' },
   { key:'notice', title:'결시자 수행안내', desc:'결시 학생에게 줄 안내장을 A4로 만들어요.', phase:2,
     icon:'<rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 7l8 6 8-6"/>' },
+  { key:'qr', title:'학생 점수 조회 QR', desc:'학생마다 QR을 만들어 나눠주면 찍어서 점수를 봐요.', phase:2,
+    icon:'<rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 14h2M14 18h2M18 18h2v2"/>' },
   { key:'xlsxExport', title:'엑셀 파일 다운로드', desc:'제출용 성적 엑셀 파일을 내려받아요.', phase:2,
     icon:'<path d="M12 3.5v11M8 11l4 4 4-4"/><path d="M4.5 16v2.5A2 2 0 0 0 6.5 20.5h11a2 2 0 0 0 2-2V16"/>' }
 ];
@@ -2027,7 +2148,7 @@ function renderHomeShell(){
 // 섹션마다 과목을 고르는 칸 (학생 명단 관리·수업 과목 설정은 과목과 상관없음)
 var HOME_SUBJECT_SELECT = {
   domains:'domainSubjectSelect', attendance:'attendanceSubjectSelect', scores:'scoreSubjectSelect',
-  compare:'compareSubjectSelect', notice:'noticeSubjectSelect', xlsxExport:'xlsxExportSubjectSelect'
+  compare:'compareSubjectSelect', notice:'noticeSubjectSelect', qr:'qrSubjectSelect', xlsxExport:'xlsxExportSubjectSelect'
 };
 // 홈 카드로 섹션을 열 때 그 섹션의 과목을 홈에서 고른 과목으로 맞춘다.
 // 과목을 바꾸면 불러온 표가 비워지므로, 저장하지 않은 변경이 있으면 먼저 물어보고 "취소"면 과목을 그대로 둔다.
@@ -2379,9 +2500,11 @@ function applyConfigToForm(cfg){
   populateSubjectSelect('noticeSubjectSelect', names, selectedNoticeSubject);
   populateSubjectSelect('compareSubjectSelect', names, selectedCompareSubject);
   populateSubjectSelect('xlsxExportSubjectSelect', names, selectedXlsxExportSubject);
+  populateSubjectSelect('qrSubjectSelect', names, selectedQrSubject);
   onCompareSubjectChange();
   onNoticeSubjectChange();
   onXlsxExportSubjectChange();
+  onQrSubjectChange();
   onDomainSubjectChange();
   onScoreSubjectChange();
   onRosterConfigLoaded();
@@ -2748,6 +2871,7 @@ function populateSubjectSelect(selectId, names, preferred){
   if (selectId === 'noticeSubjectSelect') selectedNoticeSubject = value;
   if (selectId === 'compareSubjectSelect') selectedCompareSubject = value;
   if (selectId === 'xlsxExportSubjectSelect') selectedXlsxExportSubject = value;
+  if (selectId === 'qrSubjectSelect') selectedQrSubject = value;
 }
 
 /* "과목" 드롭다운(항상 아래로 열림): 값은 숨겨진 select 에 그대로 두고, 버튼·목록만 select 의 상태를 그대로 따라 다시 그린다.
@@ -2838,7 +2962,7 @@ function setupSubjectCombo(select, btn, list){
   refresh();
 }
 
-['domain', 'attendance', 'score', 'compare', 'notice', 'xlsxExport'].forEach(function(prefix){
+['domain', 'attendance', 'score', 'compare', 'notice', 'qr', 'xlsxExport'].forEach(function(prefix){
   setupSubjectCombo(
     document.getElementById(prefix + 'SubjectSelect'),
     document.getElementById(prefix + 'SubjectBtn'),
@@ -3974,7 +4098,165 @@ document.getElementById('makeNoticePdfBtn').addEventListener('click', function()
   setTimeout(function(){ window.print(); }, 150);
 });
 
-/* ---- 8. 엑셀 파일 다운로드 (학교 제출용 양식: 과목|반|번호|성명 + 영역별 만점/점수) ---- */
+/* ---- 8. 학생 점수 조회 QR ---- */
+var qrBatch = null; // 마지막으로 생성한 { subject, grade, cls, url, students:[{ number, name, token }] }
+document.getElementById('qrSubjectSelect').addEventListener('change', function(){
+  selectedQrSubject = this.value;
+  onQrSubjectChange();
+});
+// 과목을 고르면 그 과목을 듣는 학년만, 학년을 고르면 그 학년의 반을 채운다 (엑셀 다운로드와 같은 방식)
+function onQrSubjectChange(){
+  var gSel = document.getElementById('qrGradeSelect');
+  var cSel = document.getElementById('qrClassSelect');
+  gSel.innerHTML = '<option value="">선택</option>';
+  cSel.innerHTML = '<option value="">선택</option>';
+  resetQrOutput();
+  if (!selectedQrSubject || !currentConfig) return;
+
+  var byGrade = {};
+  currentConfig.subjects.filter(function(s){ return s.name === selectedQrSubject; }).forEach(function(subj){
+    subjectClasses(subj).forEach(function(p){
+      byGrade[p.grade] = byGrade[p.grade] || [];
+      if (byGrade[p.grade].indexOf(p.cls) === -1) byGrade[p.grade].push(p.cls);
+    });
+  });
+  var grades = Object.keys(byGrade).sort(function(a,b){ return Number(a)-Number(b); });
+  if (grades.length === 0) return;
+
+  gSel.innerHTML = '<option value="">선택</option>' + grades.map(function(g){ return '<option value="'+g+'">'+g+'학년</option>'; }).join('');
+  gSel.onchange = function(){
+    var classes = (byGrade[gSel.value] || []).slice().sort(function(a,b){ return Number(a)-Number(b); });
+    cSel.innerHTML = '<option value="">선택</option>' + classes.map(function(c){ return '<option value="'+c+'">'+c+'반</option>'; }).join('');
+    resetQrOutput();
+  };
+}
+document.getElementById('qrClassSelect').addEventListener('change', function(){ resetQrOutput(); loadQrStatus(); });
+
+function qrSelection(){
+  var g = document.getElementById('qrGradeSelect').value, c = document.getElementById('qrClassSelect').value;
+  return selectedQrSubject && g && c ? { subject: selectedQrSubject, grade: g, cls: c } : null;
+}
+function sameQrSelection(sel){
+  var now = qrSelection();
+  return !!now && now.subject === sel.subject && now.grade === sel.grade && now.cls === sel.cls;
+}
+function resetQrOutput(){
+  qrBatch = null;
+  var box = document.getElementById('qrPreview');
+  box.innerHTML = '';
+  box.hidden = true;
+  document.getElementById('printQrBtn').disabled = true;
+  renderQrStatus(null);
+}
+// 고른 반의 QR 상태: 열린 QR 수와 발급일시. 마감 버튼은 열린 QR이 있을 때만 켠다.
+function renderQrStatus(st){
+  var el = document.getElementById('qrStatus');
+  var closeBtn = document.getElementById('closeQrBtn');
+  if (!st){
+    el.textContent = qrSelection() ? '' : '과목·학년·반을 고르면 QR 상태가 보여요.';
+    closeBtn.disabled = true;
+    return;
+  }
+  if (st.open > 0) el.textContent = '열린 QR ' + st.open + '개 · ' + st.issuedAt + ' 발급' + (st.closed ? ' (마감된 QR ' + st.closed + '개)' : '');
+  else if (st.closed > 0) el.textContent = '마감됨 (마감된 QR ' + st.closed + '개). "QR 생성하기"를 누르면 새 QR을 만들어요.';
+  else el.textContent = '아직 만든 QR이 없어요.';
+  closeBtn.disabled = !(st.open > 0);
+}
+function loadQrStatus(){
+  var sel = qrSelection();
+  if (!sel){ renderQrStatus(null); return; }
+  gs.withSuccessHandler(function(st){
+    if (sameQrSelection(sel)) renderQrStatus(st);
+  }).withFailureHandler(function(){
+    document.getElementById('qrStatus').textContent = 'QR 상태를 불러오지 못했어요.';
+  }).getQrStatus(TEACHER_PW, sel.subject, sel.grade, sel.cls);
+}
+
+// QR에 넣을 주소: 배포 주소?qr=토큰. 로컬 미리보기(배포 주소 없음)에서는 index.html?qr=토큰
+function qrLink(url, token){
+  var base = url || location.href.split('#')[0].split('?')[0].replace(/[^\/]*$/, 'index.html');
+  return base + '?qr=' + encodeURIComponent(token);
+}
+function qrSvg(text){
+  var qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  return qr.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+}
+// 카드 한 칸: 화면 미리보기(.qr-card)와 인쇄(.qr-cell)가 같은 내용을 쓴다
+function qrCardHtml(res, stu, cls){
+  var link = qrLink(res.url, stu.token);
+  return '<div class="' + cls + '" data-token="' + escapeHtml(stu.token) + '" data-url="' + escapeHtml(link) + '">' +
+    '<div class="qr-img">' + qrSvg(link) + '</div>' +
+    '<div class="qr-subject">' + escapeHtml(res.subject) + '</div>' +
+    '<div class="qr-who">' + escapeHtml(res.grade) + '학년 ' + escapeHtml(res.cls) + '반 ' + escapeHtml(stu.number) + '번</div>' +
+    '<div class="qr-name">' + escapeHtml(stu.name) + '</div>' +
+    '<div class="qr-hint">휴대폰 카메라로 찍으면 내 점수를 볼 수 있어요</div>' +
+  '</div>';
+}
+function renderQrPreview(res){
+  var box = document.getElementById('qrPreview');
+  box.innerHTML = res.students.map(function(stu){ return qrCardHtml(res, stu, 'qr-card'); }).join('');
+  box.hidden = false;
+  document.getElementById('printQrBtn').disabled = false;
+}
+function setQrBtnBusy(btn, busy, label){
+  btn.disabled = busy;
+  btn.querySelector('.spinner').hidden = !busy;
+  btn.querySelector('.btn-label').textContent = busy ? '만드는 중...' : label;
+}
+document.getElementById('makeQrBtn').addEventListener('click', function(){
+  if (!selectedQrSubject){ showToast('먼저 수업 과목을 추가해주세요.', true); return; }
+  var sel = qrSelection();
+  if (!sel){ showToast('학년과 반을 선택해주세요.', true); return; }
+  if (typeof qrcode === 'undefined'){ showToast('QR 라이브러리를 불러오지 못했어요. 인터넷 연결을 확인해주세요.', true); return; }
+  var btn = this;
+  setQrBtnBusy(btn, true);
+  gs.withSuccessHandler(function(res){
+    setQrBtnBusy(btn, false, 'QR 생성하기');
+    if (!sameQrSelection(sel)) return;
+    if (!res.students.length){ showToast('이 반에 등록된 학생이 없어요. "학생 명단 관리"에서 학생을 추가해주세요.', true); return; }
+    qrBatch = res;
+    renderQrPreview(res);
+    renderQrStatus(res.status);
+    if (res.created > 0) syncAfterSave(); // 시트에 토큰을 새로 적었다
+    showToast(res.created > 0 ? 'QR ' + res.students.length + '개를 만들었어요.' : '열려 있던 QR ' + res.students.length + '개를 다시 불러왔어요.');
+  }).withFailureHandler(function(){
+    setQrBtnBusy(btn, false, 'QR 생성하기');
+    showToast('QR을 만들지 못했어요. 다시 시도해주세요.', true);
+  }).issueQrCodes(TEACHER_PW, sel.subject, sel.grade, sel.cls);
+});
+// 인쇄: A4 한 장에 4×4. 결시자 수행안내와 같은 인쇄 영역을 쓴다.
+document.getElementById('printQrBtn').addEventListener('click', function(){
+  if (!qrBatch) return;
+  var pages = '';
+  for (var i = 0; i < qrBatch.students.length; i += 16){
+    var cells = qrBatch.students.slice(i, i + 16).map(function(stu){ return qrCardHtml(qrBatch, stu, 'qr-cell'); });
+    while (cells.length < 16) cells.push('<div class="qr-cell blank"></div>');
+    pages += '<div class="qr-page">' + cells.join('') + '</div>';
+  }
+  document.getElementById('noticePrintArea').innerHTML = pages;
+  showToast('인쇄 창에서 "PDF로 저장"을 선택해주세요.');
+  setTimeout(function(){ window.print(); }, 150);
+});
+document.getElementById('closeQrBtn').addEventListener('click', function(){
+  var sel = qrSelection();
+  if (!sel) return;
+  if (!confirm(sel.grade + '학년 ' + sel.cls + '반의 열린 QR을 모두 마감할까요?\n마감하면 그 QR을 찍어도 점수가 보이지 않아요.')) return;
+  var btn = this;
+  btn.disabled = true;
+  gs.withSuccessHandler(function(res){
+    resetQrOutput();
+    if (sameQrSelection(sel)) renderQrStatus(res.status);
+    syncAfterSave();
+    showToast('QR ' + res.closed + '개를 마감했어요.');
+  }).withFailureHandler(function(){
+    btn.disabled = false;
+    showToast('마감하지 못했어요. 다시 시도해주세요.', true);
+  }).closeQrCodes(TEACHER_PW, sel.subject, sel.grade, sel.cls);
+});
+
+/* ---- 9. 엑셀 파일 다운로드 (학교 제출용 양식: 과목|반|번호|성명 + 영역별 만점/점수) ---- */
 document.getElementById('xlsxExportSubjectSelect').addEventListener('change', function(){
   selectedXlsxExportSubject = this.value;
   onXlsxExportSubjectChange();

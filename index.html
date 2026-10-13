@@ -142,6 +142,10 @@
   .combo-list li:hover, .combo-list li.active{ background:#f1f1f6; }
   .combo-list li[aria-selected="true"]{ background: var(--purple-tint); color: var(--purple-dark); font-weight:600; }
 
+  /* QR 로 열었을 때 안내 (불러오는 중 / 마감됨 / 못 찾음) */
+  .qr-notice[hidden]{ display:none; }
+  .qr-notice{ font-size:13px; line-height:1.5; color:var(--ink-soft); background:#f1f1f6; border-radius:10px; padding:10px 12px; margin:0 0 16px; }
+  .qr-notice.error{ color:var(--red); background:var(--red-tint); }
   .error-msg[hidden]{ display:none; }
   .error-msg{
     display:flex; align-items:center; gap:8px;
@@ -335,6 +339,7 @@
         <h1>수행평가 조회</h1>
         <p class="brand-sub">학년·반·번호를 고르면<br/>내 수행평가 결과를 확인할 수 있어요</p>
       </div>
+      <p class="qr-notice" id="qrNotice" hidden></p>
       <form id="loginForm" novalidate>
         <div class="field-row">
           <div class="field">
@@ -418,25 +423,36 @@ function createMockRun(){
         var real = MOCK_NAMES[key];
         if (!real) return { ok:false, error:'해당 학년/반/번호의 학생을 찾을 수 없습니다.' };
         if (name.trim() && real !== name.trim()) return { ok:false, error:'이름이 일치하지 않습니다. 학년·반·번호와 이름을 다시 확인해주세요.' };
-        return {
-          ok:true, year:2025, semester:'2학기',
-          grade:g, class:c, number:n, name:real,
-          subjects:[{
-            subject:'기술·가정',
-            domains:[
-              {name:'청소년의 건강한 식생활 제안하기', group:'', max:20, score:18, done:true, state:'done'},
-              {name:'나에게 어울리는 옷 디자인하기', group:'의복 디자인하기', max:16, score:15, done:true, state:'done'},
-              {name:'에코 수세미 제작하기', group:'의복 디자인하기', max:14, score:null, done:false, state:'current'},
-              {name:'적정기술의 필요성 주장하기', group:'', max:20, score:null, done:false, state:'notdone'},
-              {name:'발명품 계획하기', group:'기술적 문제 해결 및 발명품 기획 프로젝트', max:14, score:null, done:false, state:'upcoming'},
-              {name:'발명품 제작하기', group:'기술적 문제 해결 및 발명품 기획 프로젝트', max:16, score:null, done:false, state:'upcoming'}
-            ],
-            total:33, totalMax:36, fullMax:100, declaredTotal:100, doneCount:2, currentCount:1, notDoneCount:1, upcomingCount:2, domainCount:6
-          }]
-        };
+        return demoResult(g, c, n, real);
+      });
+    },
+    // QR 미리보기: index.html?qr=demo 로 열면 홍길동(1-1-1)의 기술·가정 점수, ?qr=closed 는 마감 안내
+    getStudentResultByQr: function(token){
+      run(function(){
+        if (token === 'closed') return { ok:false, closed:true, error:'이 QR 코드는 마감되었어요. 아래에서 학년·반·번호로 조회해 보세요.' };
+        if (token !== 'demo' && String(token).indexOf('mock') !== 0) return { ok:false, error:'QR 코드를 찾을 수 없어요. 선생님께 문의해주세요.' };
+        return Object.assign(demoResult('1', '1', '1', '홍길동'), { qrSubject:'기술·가정' });
       });
     }
   };
+  function demoResult(g, c, n, real){
+    return {
+      ok:true, year:2025, semester:'2학기',
+      grade:g, class:c, number:n, name:real,
+      subjects:[{
+        subject:'기술·가정',
+        domains:[
+          {name:'청소년의 건강한 식생활 제안하기', group:'', max:20, score:18, done:true, state:'done'},
+          {name:'나에게 어울리는 옷 디자인하기', group:'의복 디자인하기', max:16, score:15, done:true, state:'done'},
+          {name:'에코 수세미 제작하기', group:'의복 디자인하기', max:14, score:null, done:false, state:'current'},
+          {name:'적정기술의 필요성 주장하기', group:'', max:20, score:null, done:false, state:'notdone'},
+          {name:'발명품 계획하기', group:'기술적 문제 해결 및 발명품 기획 프로젝트', max:14, score:null, done:false, state:'upcoming'},
+          {name:'발명품 제작하기', group:'기술적 문제 해결 및 발명품 기획 프로젝트', max:16, score:null, done:false, state:'upcoming'}
+        ],
+        total:33, totalMax:36, fullMax:100, declaredTotal:100, doneCount:2, currentCount:1, notDoneCount:1, upcomingCount:2, domainCount:6
+      }]
+    };
+  }
   function run(fn){
     var h = handlers; handlers = {};
     setTimeout(function(){
@@ -696,7 +712,9 @@ function renderResult(res){
 
   var container = document.getElementById('subjectsContainer');
   var total = res.subjects.length;
-  container.innerHTML = total > 1 ? buildCarouselHtml(res.subjects) : buildSubjectHtml(res.subjects[0], '');
+  // QR 로 열면 그 과목만 보이므로, 과목이 하나여도 어느 과목인지 이름을 붙인다
+  var single = res.qrSubject ? '<div class="subject-heading"><span>' + escapeHtml(res.qrSubject) + '</span></div>' : '';
+  container.innerHTML = total > 1 ? buildCarouselHtml(res.subjects) : buildSubjectHtml(res.subjects[0], single);
   if (total > 1) setupCarousel(container);
 }
 
@@ -792,12 +810,49 @@ function refreshOnReturn(){
     if (classSelect.value) numberSelect.value = n;
   }).getRosterOptions();
   if (lastLookup && screenResult.classList.contains('active')){
-    gs.withSuccessHandler(function(res){ if (res.ok) renderResult(res); })
-      .getStudentResult(lastLookup.g, lastLookup.c, lastLookup.n, lastLookup.name);
+    if (lastLookup.qr){
+      // QR 로 연 화면: 그사이 마감됐으면 점수 화면을 닫고 안내한다
+      gs.withSuccessHandler(function(res){ if (res.ok) renderResult(res); else showQrNotice(res.error, true); })
+        .getStudentResultByQr(lastLookup.qr);
+    } else {
+      gs.withSuccessHandler(function(res){ if (res.ok) renderResult(res); })
+        .getStudentResult(lastLookup.g, lastLookup.c, lastLookup.n, lastLookup.name);
+    }
   }
 }
 document.addEventListener('visibilitychange', refreshOnReturn);
 window.addEventListener('focus', refreshOnReturn);
+
+/* ---- QR 로 열었을 때 (교사 화면 "학생 점수 조회 QR") ----
+   주소의 ?qr=토큰 을 읽어 서버에 묻고, 열려 있으면 그 학생의 점수 화면을 바로 보여준다 (QR을 만든 과목만).
+   배포 환경에서는 화면이 iframe 안에서 돌아가 location 에 토큰이 없으므로 google.script.url 로 받는다. */
+function readQrToken(cb){
+  if (typeof google !== 'undefined' && google.script && google.script.url){
+    google.script.url.getLocation(function(loc){ cb((loc.parameter && loc.parameter.qr) || ''); });
+  } else {
+    cb(new URLSearchParams(location.search).get('qr') || '');
+  }
+}
+function showQrNotice(msg, isError){
+  var el = document.getElementById('qrNotice');
+  el.textContent = msg;
+  el.className = 'qr-notice' + (isError ? ' error' : '');
+  el.hidden = false;
+  goTo(screenLogin);
+}
+function openByQr(token){
+  showQrNotice('QR 코드로 점수를 불러오는 중...', false);
+  gs.withSuccessHandler(function(res){
+    if (!res.ok){ showQrNotice(res.error, true); return; }
+    document.getElementById('qrNotice').hidden = true;
+    lastLookup = { qr: token };
+    renderResult(res);
+    goTo(screenResult);
+  }).withFailureHandler(function(){
+    showQrNotice('일시적인 오류로 점수를 불러오지 못했어요. 잠시 후 다시 시도해주세요.', true);
+  }).getStudentResultByQr(token);
+}
+readQrToken(function(token){ if (token) openByQr(token); });
 
 // 배포 환경에서는 교사 화면이 <배포 주소>?page=teacher 로 열림 (로컬 미리보기는 teacher.html 유지)
 gs.withSuccessHandler(function(url){
