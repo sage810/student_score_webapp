@@ -673,7 +673,9 @@ function getStudentResult(grade, cls, number, name) {
   if (matches.length === 0) {
     return { ok: false, error: '해당 학년/반/번호의 학생을 찾을 수 없습니다.' };
   }
-  var nameMatches = matches.filter(function (r) { return String(r[3]).trim() === String(name).trim(); });
+  // 이름은 선택 입력: 비워 두면 학년·반·번호만으로 조회하고, 입력했으면 명단의 이름과 같은지 확인한다.
+  var nameMatches = String(name || '').trim() === '' ? matches
+    : matches.filter(function (r) { return String(r[3]).trim() === String(name).trim(); });
   if (nameMatches.length === 0) {
     return { ok: false, error: '이름이 일치하지 않습니다. 학년·반·번호와 이름을 다시 확인해주세요.' };
   }

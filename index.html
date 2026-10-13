@@ -333,7 +333,7 @@
           <div class="line2" id="loginInfoSubject">-</div>
         </div>
         <h1>수행평가 조회</h1>
-        <p class="brand-sub">학년·반·번호와 이름을 입력하면<br/>내 수행평가 결과를 확인할 수 있어요</p>
+        <p class="brand-sub">학년·반·번호를 고르면<br/>내 수행평가 결과를 확인할 수 있어요</p>
       </div>
       <form id="loginForm" novalidate>
         <div class="field-row">
@@ -359,8 +359,8 @@
           </div>
         </div>
         <div class="field">
-          <label for="nameInput">이름</label>
-          <input type="text" id="nameInput" placeholder="이름을 입력하세요" autocomplete="off" required />
+          <label for="nameInput">이름 (선택)</label>
+          <input type="text" id="nameInput" placeholder="이름을 입력하세요 (비워도 돼요)" autocomplete="off" />
         </div>
         <p id="errorMsg" class="error-msg" hidden></p>
         <button type="submit" class="btn-primary" id="submitBtn">
@@ -417,7 +417,7 @@ function createMockRun(){
         var key = g+'-'+c+'-'+n;
         var real = MOCK_NAMES[key];
         if (!real) return { ok:false, error:'해당 학년/반/번호의 학생을 찾을 수 없습니다.' };
-        if (real !== name.trim()) return { ok:false, error:'이름이 일치하지 않습니다. 학년·반·번호와 이름을 다시 확인해주세요.' };
+        if (name.trim() && real !== name.trim()) return { ok:false, error:'이름이 일치하지 않습니다. 학년·반·번호와 이름을 다시 확인해주세요.' };
         return {
           ok:true, year:2025, semester:'2학기',
           grade:g, class:c, number:n, name:real,
@@ -623,7 +623,6 @@ loginForm.addEventListener('submit', function(e){
   hideError();
   var g = gradeSelect.value, c = classSelect.value, n = numberSelect.value, name = nameInput.value.trim();
   if (!g || !c || !n){ showError('학년·반·번호를 모두 선택해주세요.'); return; }
-  if (!name){ showError('이름을 입력해주세요.'); return; }
 
   setLoading(true);
   gs.withSuccessHandler(function(res){
