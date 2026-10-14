@@ -16,15 +16,12 @@
  *   과목  : 과목명 | 총점 | 학년반목록 | ID  (2행부터, 최대 5개 과목. "총점"은 영역 배점 합과 별개로 선언하는 만점 — 100점이 아닐 수도 있음.
  *          "학년반목록"은 이 과목을 반 전체가 듣는 학년-반 조합을 "학년-반" 형식으로 세미콜론(;)으로 이어붙인 문자열. 예: "1-1;1-2;2-3"
  *          "ID"는 화면에 안 보이는 내부 식별자 — 같은 이름의 과목을 학년별로 여러 개 만들어도(예: "기술·가정"을 1학년용/2학년용 각각) 영역이 안 섞이게 해줌)
- *   출석명단_과목명 : 학년 | 반 | 번호 | 이름  — 반 전체가 아니라 학생 한 명씩 그 과목을 듣는 개별수강생 (과목명마다 별도 시트.
- *          수업 과목 설정의 "이 과목을 수강하는 학생 추가하기"로 학생을 추가하면 자동으로 만들어짐. 시트에서 직접 행을 더하거나 지워도 됨 — 학년·반·번호로 판단하고 이름은 확인용)
- *          → 이 과목의 학급 = 학년반목록 + 출석명단 학생의 학급. 출석명단으로만 들어간 학급에서는 그 학생들만 이 과목 화면에 나옴
- *          (이름이 같은 과목이 학년별로 여럿이면 학생의 학년을 듣는 쪽 과목에 붙음)
- *   영역메모 : 과목ID | 학년 | 반 | 영역명 | 메모  — 응시·결시 관리의 "영역별 메모"(반마다 따로). 영역 상태는 여기에 없고 "영역" 시트의 "상태" 열에서 관리함
+ *   (예전에 "이 과목을 수강하는 학생 추가하기"로 만든 출석명단_과목명 시트는 더 이상 읽지 않음 — 과목은 반 전체 단위로만 연결. 시트는 지우지 않고 그대로 둠)
+ *   영역메모 : 과목ID | 학년 | 반 | 영역명 | 메모  — 응시·결시 관리의 "영역별 메모"(반마다 따로)
  *          (예전 이름은 "진행상태" — 그 이름의 시트가 있으면 처음 열 때 "영역메모"로 이름만 바뀌고 메모는 그대로 남음)
- *   영역  : 과목ID | 영역명 | 배점 | 그룹 | 상태 | 급간  (급간 = 1~10, 비우면 점수 입력표에서 드롭다운 없이 숫자로 직접 입력. 그룹이 같으면 화면에서 한 묶음으로 표시. "과목명"이 아니라 "과목ID" 기준이라 이름이 같은 과목끼리도 안 섞임)
- *          "상태" = "완료" / "이번 수행" / "예정" (시트에서 드롭다운으로 고름, 비어 있으면 "예정"). 그 과목을 듣는 모든 반에 같은 상태가 적용됨.
- *          수행 영역 관리 화면에서 바꿔도, 시트에서 직접 바꿔도 같은 값을 쓰고, 학생 조회 화면의 "이번 수행"도 이 값을 따름
+ *   영역  : 과목ID | 영역명 | 배점 | 그룹 | 급간  (급간 = 1~10, 비우면 점수 입력표에서 드롭다운 없이 숫자로 직접 입력. 그룹이 같으면 화면에서 한 묶음으로 표시. "과목명"이 아니라 "과목ID" 기준이라 이름이 같은 과목끼리도 안 섞임)
+ *          영역 상태(완료/이번 수행/예정)는 없앴다. 학생 화면의 미실시/예정은 점수로 판단함(반에서 누군가 점수가 있으면 미실시, 아무도 없으면 예정).
+ *          예전 시트의 "상태" 열(급간 앞)은 처음 열 때 지워지고 급간이 그 자리로 당겨짐
  *   명단  : 학년 | 반 | 번호 | 이름  — 학급별 학생 (과목 열 없음). 수업 과목 설정에서 그 학년·반을 추가한 과목의 응시·결시 관리, 반별 점수 입력 표, 결시자 수행안내에 자동 연결됨 (교사 화면의 "학생 명단 관리"에서도 편집 가능)
  *   점수_과목명 : 과목명 | 학년 | 반 | 번호 | 이름 | <영역1> | <영역2> | ... | 합계  ("합계"는 맨 오른쪽 열, 영역 점수의 SUM 수식 — 결시·빈 칸은 합에서 빠짐. 영역이 추가되어도 합계 열 앞에 끼워져 항상 맨 오른쪽에 있음. 영역 이름을 "합계"로 짓지 말 것)  (과목명이 다르면 시트도 다름 — 예: "점수_기술·가정". 없으면 처음 저장할 때 자동으로 만들어지고, 예전 통합 "점수" 시트에 그 과목 기록이 있으면 자동으로 옮겨 옴. 시트 이름에 못 쓰는 글자 : \ / ? * [ ] 는 _ 로 바뀜. 빈 칸 = 미실시, "결시" = 응시·결시 관리에서 결시로 표시한 항목 — 총점 계산은 미실시와 동일하게 취급. 예전에 저장된 "결시:날짜" 형식도 결시로 인식하며, 저장하면 "결시"로 정리됨)
  *   (점수_과목명·결시명단_과목명 시트는 저장할 때마다 학년 → 반 → 번호 오름차순으로 정렬됨. 반·번호는 숫자로 비교해서 2반이 10반보다 앞)
@@ -74,44 +71,49 @@ function ensureSheets_() {
 
   var subj = ss.getSheetByName('과목');
   var seedDemoScores = false;
-  var legacyCurrent = [];
   if (!subj) {
     seedDemoScores = true;
     subj = ss.insertSheet('과목');
     subj.getRange('A1:D1').setValues([SUBJECT_HEADER]);
     subj.getRange('A2:D2').setValues([[DEMO_SUBJECT, 100, '1-1;1-2;2-1;2-2', DEMO_SUBJECT_ID]]);
   } else if (String(subj.getRange(1, 2).getValue()) === '현재영역') {
-    // 예전 형식(과목명 | 현재영역 | 총점 | 학년반목록 | ID)에서 "현재영역" 열을 없앤다. 이번 수행 표시는 "영역" 시트의 상태로 대신한다.
-    // 없애기 전에 적혀 있던 현재영역은 아래에서 그 영역의 상태("이번 수행")로 옮겨 둔다.
-    var oldRows = subj.getLastRow() > 1 ? subj.getRange(2, 1, subj.getLastRow() - 1, 5).getValues() : [];
-    legacyCurrent = oldRows
-      .filter(function (r) { return r[0] && r[1] && r[4]; })
-      .map(function (r) { return { id: String(r[4]), domain: String(r[1]), pairs: parseClassPairs_(r[3]) }; });
+    // 예전 형식(과목명 | 현재영역 | 총점 | 학년반목록 | ID)에서 "현재영역" 열을 없앤다
     subj.deleteColumn(2);
   }
 
   var dom = ss.getSheetByName('영역');
   if (!dom) {
     dom = ss.insertSheet('영역');
-    dom.getRange('A1:F1').setValues([DOMAIN_HEADER]);
-    // 데모: 앞의 두 영역은 완료, 에코 수세미 제작하기는 이번 수행
-    dom.getRange('A2:E7').setValues([
-      [DEMO_SUBJECT_ID, '청소년의 건강한 식생활 제안하기', 20, '', '완료'],
-      [DEMO_SUBJECT_ID, '나에게 어울리는 옷 디자인하기', 16, '의복 디자인하기', '완료'],
-      [DEMO_SUBJECT_ID, '에코 수세미 제작하기', 14, '의복 디자인하기', '이번 수행'],
-      [DEMO_SUBJECT_ID, '적정기술의 필요성 주장하기', 20, '', '예정'],
-      [DEMO_SUBJECT_ID, '발명품 계획하기', 14, '기술적 문제 해결 및 발명품 기획 프로젝트', '예정'],
-      [DEMO_SUBJECT_ID, '발명품 제작하기', 16, '기술적 문제 해결 및 발명품 기획 프로젝트', '예정']
+    dom.getRange(1, 1, 1, DOMAIN_HEADER.length).setValues([DOMAIN_HEADER]);
+    dom.getRange('A2:D7').setValues([
+      [DEMO_SUBJECT_ID, '청소년의 건강한 식생활 제안하기', 20, ''],
+      [DEMO_SUBJECT_ID, '나에게 어울리는 옷 디자인하기', 16, '의복 디자인하기'],
+      [DEMO_SUBJECT_ID, '에코 수세미 제작하기', 14, '의복 디자인하기'],
+      [DEMO_SUBJECT_ID, '적정기술의 필요성 주장하기', 20, ''],
+      [DEMO_SUBJECT_ID, '발명품 계획하기', 14, '기술적 문제 해결 및 발명품 기획 프로젝트'],
+      [DEMO_SUBJECT_ID, '발명품 제작하기', 16, '기술적 문제 해결 및 발명품 기획 프로젝트']
     ]);
-    applyDomainStatusValidation_(dom);
+    applyDomainStepValidation_(dom);
   } else {
-    migrateDomainStatus_(ss, dom);
-    // 급간 열(F열)이 없는 예전 시트에는 머리글만 달아 둔다
-    if (dom.getMaxColumns() < 6) dom.insertColumnsAfter(dom.getMaxColumns(), 6 - dom.getMaxColumns());
-    if (String(dom.getRange(1, 6).getValue()) !== '급간') {
-      dom.getRange(1, 6).setValue('급간');
-      applyDomainStatusValidation_(dom);
+    // 영역 상태(완료/이번 수행/예정)를 없앴으므로, 예전 시트의 "상태" 열(E열)은 지운다. 그 뒤의 급간 열이 E열로 당겨진다.
+    // 배포 직후 여러 사람이 동시에 열면 두 번 지워 급간 열까지 사라질 수 있으므로, 잠근 뒤 머리글을 다시 확인하고 지운다.
+    var isStatusHead = function () { return dom.getMaxColumns() >= 5 && String(dom.getRange(1, 5).getValue()) === '상태'; };
+    var hadStatus = false;
+    if (isStatusHead()) {
+      var lock = LockService.getScriptLock();
+      lock.waitLock(10000);
+      try {
+        hadStatus = isStatusHead();
+        if (hadStatus) { dom.deleteColumn(5); SpreadsheetApp.flush(); }
+      } finally {
+        lock.releaseLock();
+      }
     }
+    // 급간 열(E열)이 없는 예전 시트에는 머리글만 달아 둔다
+    if (dom.getMaxColumns() < 5) dom.insertColumnsAfter(dom.getMaxColumns(), 5 - dom.getMaxColumns());
+    var hadStep = String(dom.getRange(1, 5).getValue()) === '급간';
+    if (!hadStep) dom.getRange(1, 5).setValue('급간');
+    if (hadStatus || !hadStep) applyDomainStepValidation_(dom);
   }
 
   var roster = ss.getSheetByName('명단');
@@ -134,19 +136,6 @@ function ensureSheets_() {
     migrateRosterIfNeeded_(roster);
   }
 
-  // 한때 과목 시트 E열("개별수강생")에 "학년-반-번호;..."로 적던 개별수강생을 "출석명단_과목명" 시트로 옮기고 그 열은 없앤다
-  if (subj.getMaxColumns() >= 5 && String(subj.getRange(1, 5).getValue()) === '개별수강생') {
-    var rosterRows = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
-    var enrollByName = {};
-    if (subj.getLastRow() > 1) {
-      subj.getRange(2, 1, subj.getLastRow() - 1, 5).getValues().forEach(function (r) {
-        if (r[0]) enrollByName[r[0]] = (enrollByName[r[0]] || []).concat(parseStudentList_(r[4]));
-      });
-    }
-    Object.keys(enrollByName).forEach(function (name) { writeEnrollSheet_(ss, name, enrollByName[name], rosterRows); });
-    subj.deleteColumn(5);
-  }
-
   // 점수는 과목마다 별도 시트("점수_과목명")에 저장한다. 데모 과목의 점수 시트는 처음 만들 때만 채운다.
   if (seedDemoScores && !ss.getSheetByName(subjectSheetName_('점수', DEMO_SUBJECT)) && roster.getLastRow() > 1) {
     var score = ss.insertSheet(subjectSheetName_('점수', DEMO_SUBJECT));
@@ -154,7 +143,7 @@ function ensureSheets_() {
     var header = SCORE_FIXED_HEADER.concat(demoDomains.map(function (d) { return d.name; }), [TOTAL_HEADER]);
     score.getRange(1, 1, 1, header.length).setValues([header]);
 
-    // 데모용 상태: 2=에코 수세미(이번 수행, 전원 미채점) / 3=적정기술(절반만 미실시) / 4,5=발명품(전원 예정)
+    // 데모용 점수: 2=에코 수세미(전원 미채점) / 3=적정기술(절반만 미실시) / 4,5=발명품(전원 예정)
     var rosterData = roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues();
     var scoreRows = rosterData.map(function (r, i) {
       var vals = demoDomains.map(function (d, di) {
@@ -179,7 +168,7 @@ function ensureSheets_() {
     memo = ss.insertSheet(MEMO_SHEET);
     memo.getRange('A1:E1').setValues([MEMO_HEADER]);
   } else {
-    // 예전 형식(과목ID | 학년 | 반 | 영역명 | 상태 [| 메모])의 반별 상태 열을 없앤다. 상태는 위의 migrateDomainStatus_ 가 이미 "영역" 시트로 옮겼다.
+    // 예전 형식(과목ID | 학년 | 반 | 영역명 | 상태 [| 메모])의 반별 상태 열을 없앤다 (영역 상태는 더 이상 쓰지 않음).
     // 상태만 있고 메모가 없던 행은 더 이상 필요 없으므로 함께 지운다.
     if (String(memo.getRange(1, 5).getValue()) === '상태') {
       memo.deleteColumn(5);
@@ -197,24 +186,11 @@ function ensureSheets_() {
     ss.insertSheet(QR_SHEET).getRange(1, 1, 1, QR_HEADER.length).setValues([QR_HEADER]);
   }
 
-  if (legacyCurrent.length) {
-    // 아주 예전 형식의 "현재영역"은 그 영역의 상태를 "이번 수행"으로 바꿔서 옮긴다(이미 완료·이번 수행이면 그대로 둠).
-    var domLast = dom.getLastRow();
-    var domRows = domLast > 1 ? dom.getRange(2, 1, domLast - 1, 5).getValues() : [];
-    domRows.forEach(function (r, i) {
-      var hit = legacyCurrent.some(function (s) { return s.id === String(r[0]) && s.domain === String(r[1]); });
-      if (hit && (r[4] === '' || r[4] === '예정')) dom.getRange(i + 2, 5).setValue('이번 수행');
-    });
-  }
-
   return ss;
 }
 
 var SUBJECT_HEADER = ['과목명', '총점', '학년반목록', 'ID'];
-var ENROLL_PREFIX = '출석명단';
-var ENROLL_HEADER = ['학년', '반', '번호', '이름'];
-var DOMAIN_STATUSES = ['완료', '이번 수행', '예정'];
-var DOMAIN_HEADER = ['과목ID', '영역명', '배점', '그룹', '상태', '급간'];
+var DOMAIN_HEADER = ['과목ID', '영역명', '배점', '그룹', '급간'];
 var MEMO_SHEET = '영역메모';
 var LEGACY_MEMO_SHEET = '진행상태'; // 영역메모 시트의 예전 이름 (반별 상태도 함께 들어 있던 시절)
 var MEMO_HEADER = ['과목ID', '학년', '반', '영역명', '메모'];
@@ -222,47 +198,12 @@ var QR_SHEET = 'QR코드';
 var QR_HEADER = ['토큰', '과목ID', '학년', '반', '번호', '이름', '발급일시', '상태'];
 var QR_OPEN = '열림', QR_CLOSED = '마감';
 
-// "영역" 시트 상태 열(E열)에 완료/이번 수행/예정 드롭다운을 건다. 시트에서 직접 고칠 때도 이 세 값만 들어가게 한다.
-// 급간 열(F열)에도 1~10 드롭다운을 건다 (비워 두면 점수 입력표에서 드롭다운 없이 직접 입력).
+// "영역" 시트 급간 열(E열)에 1~10 드롭다운을 건다 (비워 두면 점수 입력표에서 드롭다운 없이 직접 입력).
 var DOMAIN_STEPS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
-function applyDomainStatusValidation_(dom) {
-  if (dom.getMaxRows() < 2) return;
-  var rule = SpreadsheetApp.newDataValidation().requireValueInList(DOMAIN_STATUSES, true).setAllowInvalid(false).build();
-  dom.getRange(2, 5, dom.getMaxRows() - 1, 1).setDataValidation(rule);
-  if (dom.getMaxColumns() < 6) return;
+function applyDomainStepValidation_(dom) {
+  if (dom.getMaxRows() < 2 || dom.getMaxColumns() < 5) return;
   var stepRule = SpreadsheetApp.newDataValidation().requireValueInList(DOMAIN_STEPS, true).setAllowInvalid(false).build();
-  dom.getRange(2, 6, dom.getMaxRows() - 1, 1).setDataValidation(stepRule);
-}
-
-// 예전에는 영역 상태가 "진행상태"(지금의 영역메모) 시트에 반마다 있었다(과목ID | 학년 | 반 | 영역명 | 상태 | 메모).
-// 이제는 "영역" 시트의 "상태" 열 하나로 관리하므로, 그 열이 없으면 만들고 예전 값을 옮겨 온다.
-// 반마다 상태가 같았으면 그 값, 서로 달랐으면 "이번 수행", 기록이 없던 영역은 "예정"으로 옮긴다.
-// (그 시트의 상태 열 삭제와 "영역메모"로 이름 바꾸기는 이어서 ensureSheets_ 가 한다)
-function migrateDomainStatus_(ss, dom) {
-  if (dom.getMaxColumns() < 5) dom.insertColumnsAfter(dom.getMaxColumns(), 5 - dom.getMaxColumns());
-  if (String(dom.getRange(1, 5).getValue()) === '상태') return;
-
-  var perDomain = {}; // "과목ID|영역명" -> [반마다의 상태]
-  var progress = ss.getSheetByName(MEMO_SHEET) || ss.getSheetByName(LEGACY_MEMO_SHEET);
-  if (progress && String(progress.getRange(1, 5).getValue()) === '상태' && progress.getLastRow() > 1) {
-    progress.getRange(2, 1, progress.getLastRow() - 1, 5).getValues().forEach(function (r) {
-      if (!r[0] || !r[3] || DOMAIN_STATUSES.indexOf(String(r[4])) === -1) return;
-      var key = r[0] + '|' + r[3];
-      (perDomain[key] = perDomain[key] || []).push(String(r[4]));
-    });
-  }
-
-  dom.getRange(1, 5).setValue('상태');
-  var lastRow = dom.getLastRow();
-  if (lastRow > 1) {
-    var keys = dom.getRange(2, 1, lastRow - 1, 2).getValues();
-    dom.getRange(2, 5, keys.length, 1).setValues(keys.map(function (r) {
-      var list = perDomain[r[0] + '|' + r[1]] || [];
-      if (!list.length) return ['예정'];
-      return [list.every(function (s) { return s === list[0]; }) ? list[0] : '이번 수행'];
-    }));
-  }
-  applyDomainStatusValidation_(dom);
+  dom.getRange(2, 5, dom.getMaxRows() - 1, 1).setDataValidation(stepRule);
 }
 
 // 예전 형식(과목명 | 학년 | 반 | 번호 | 이름)의 명단 시트를 새 형식(학년 | 반 | 번호 | 이름)으로 바꾼다.
@@ -311,51 +252,6 @@ function serializeClassPairs_(pairs) {
   return (pairs || []).map(function (p) { return p.grade + '-' + p.cls; }).join(';');
 }
 
-// 예전 과목 시트 "개별수강생" 칸: "학년-반-번호;학년-반-번호" → [{grade, cls, number}] (출석명단 시트로 옮길 때만 씀)
-function parseStudentList_(str) {
-  return String(str || '').split(';').map(function (s) { return s.trim(); }).filter(Boolean).map(function (item) {
-    var parts = item.split('-');
-    return { grade: parts[0], cls: parts[1], number: parts[2] };
-  }).filter(function (s) { return s.grade && s.cls && s.number; });
-}
-
-// "출석명단_과목명" 시트의 개별수강생 → [{grade, cls, number}] (시트가 없으면 없음)
-function readEnrollSheet_(ss, subject) {
-  var sheet = ss.getSheetByName(subjectSheetName_(ENROLL_PREFIX, subject));
-  if (!sheet || sheet.getLastRow() < 2) return [];
-  var seen = {}, list = [];
-  sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(function (r) {
-    if (r[0] === '' || r[1] === '' || r[2] === '') return;
-    var key = r[0] + '-' + r[1] + '-' + r[2];
-    if (seen[key]) return;
-    seen[key] = true;
-    list.push({ grade: String(r[0]), cls: String(r[1]), number: String(r[2]) });
-  });
-  return list;
-}
-
-// 개별수강생을 "출석명단_과목명" 시트에 다시 쓴다. 이름은 명단에서 찾아 채운다.
-// 학생이 없으면 시트를 새로 만들지 않고, 이미 있던 시트는 머리글만 남긴다.
-function writeEnrollSheet_(ss, subject, students, rosterRows) {
-  var name = subjectSheetName_(ENROLL_PREFIX, subject);
-  var sheet = ss.getSheetByName(name);
-  if (!sheet && !students.length) return;
-  if (!sheet) sheet = ss.insertSheet(name);
-  var nameOf = {};
-  rosterRows.forEach(function (r) { nameOf[r[0] + '-' + r[1] + '-' + r[2]] = r[3]; });
-  var seen = {}, rows = [];
-  students.forEach(function (s) {
-    var key = s.grade + '-' + s.cls + '-' + s.number;
-    if (seen[key]) return;
-    seen[key] = true;
-    rows.push([s.grade, s.cls, s.number, nameOf[key] || '']);
-  });
-  rows = sortByClassOrder_(rows, 0, 1, 2);
-  sheet.clear();
-  sheet.getRange(1, 1, 1, 4).setValues([ENROLL_HEADER]);
-  if (rows.length) sheet.getRange(2, 1, rows.length, 4).setValues(rows);
-}
-
 function getSubjects_(ss) {
   var sheet = ss.getSheetByName('과목');
   var lastRow = sheet.getLastRow();
@@ -365,53 +261,24 @@ function getSubjects_(ss) {
     .map(function (r) {
       return {
         name: String(r[0]), declaredTotal: Number(r[1]) || 0,
-        classPairs: parseClassPairs_(r[2]), id: String(r[3] || ''), students: []
+        classPairs: parseClassPairs_(r[2]), id: String(r[3] || '')
       };
     });
-  // 개별수강생은 과목명마다 "출석명단_과목명" 시트에서. 이름이 같은 과목이 여럿이면 그 학생의 학년을 듣는 쪽에 붙인다.
-  var done = {};
-  subjects.forEach(function (s) {
-    if (done[s.name]) return;
-    done[s.name] = true;
-    var same = subjects.filter(function (t) { return t.name === s.name; });
-    readEnrollSheet_(ss, s.name).forEach(function (st) {
-      var target = same.filter(function (t) {
-        return t.classPairs.some(function (p) { return String(p.grade) === st.grade; });
-      })[0] || same[0];
-      target.students.push(st);
-    });
-  });
   return subjects;
 }
 
-// 이 과목이 나오는 학급: 반 전체가 듣는 학급(학년반목록) + 개별수강생이 속한 학급
+// 이 과목이 나오는 학급 = 반 전체가 듣는 학급(학년반목록)
 function subjectClasses_(s) {
-  var seen = {}, list = [];
-  s.classPairs.concat(s.students).forEach(function (p) {
-    var key = p.grade + '-' + p.cls;
-    if (seen[key]) return;
-    seen[key] = true;
-    list.push({ grade: p.grade, cls: p.cls });
-  });
-  return list;
+  return s.classPairs;
 }
 
-// 그 학급에서 이 과목을 듣는 번호 목록. 반 전체가 들으면 null(모두).
-function enrolledNumbers_(s, grade, cls) {
-  var whole = s.classPairs.some(function (p) { return String(p.grade) === String(grade) && String(p.cls) === String(cls); });
-  if (whole) return null;
-  return s.students
-    .filter(function (p) { return String(p.grade) === String(grade) && String(p.cls) === String(cls); })
-    .map(function (p) { return String(p.number); });
-}
-
-function isEnrolled_(s, grade, cls, number) {
-  var nums = enrolledNumbers_(s, grade, cls);
-  return nums === null || nums.indexOf(String(number)) !== -1;
+// 그 학급(반 전체)이 이 과목을 듣는지
+function hasClass_(s, grade, cls) {
+  return s.classPairs.some(function (p) { return String(p.grade) === String(grade) && String(p.cls) === String(cls); });
 }
 
 // 이름이 같은 과목이 여러 개 있을 수 있으므로, 이름만으로는 어떤 과목인지 확정할 수 없다.
-// 후보가 여럿이면 학년·반이 그 과목의 학급(개별수강생 학급 포함)에 들어가는 쪽을 고른다.
+// 후보가 여럿이면 학년·반이 그 과목의 학급에 들어가는 쪽을 고른다.
 function resolveSubjectInstance_(subjects, name, grade, cls) {
   var candidates = subjects.filter(function (s) { return s.name === name; });
   if (candidates.length <= 1) return candidates[0] || null;
@@ -431,13 +298,10 @@ function getDomainsForSubject_(ss, subjectId) {
   var domSheet = ss.getSheetByName('영역');
   var lastRow = domSheet.getLastRow();
   if (lastRow < 2) return [];
-  return domSheet.getRange(2, 1, lastRow - 1, 6).getValues()
+  return domSheet.getRange(2, 1, lastRow - 1, 5).getValues()
     .filter(function (r) { return r[0] === subjectId && r[1]; })
     .map(function (r) {
-      return {
-        name: String(r[1]), max: Number(r[2]) || 0, group: String(r[3] || ''), step: cleanStep_(r[5]),
-        status: DOMAIN_STATUSES.indexOf(String(r[4])) !== -1 ? String(r[4]) : '예정' // 비어 있으면 예정
-      };
+      return { name: String(r[1]), max: Number(r[2]) || 0, group: String(r[3] || ''), step: cleanStep_(r[4]) };
     });
 }
 
@@ -600,7 +464,7 @@ function verifyTeacherPassword(password) {
 // 앱이 쓰는 시트만 본다 (교사가 따로 만든 시트의 =NOW() 같은 수식 때문에 헛 감지되지 않게)
 function isAppSheet_(name) {
   return ['설정', '과목', '영역', '명단', MEMO_SHEET, QR_SHEET].indexOf(name) !== -1 ||
-    name.indexOf('점수_') === 0 || name.indexOf('결시명단_') === 0 || name.indexOf(ENROLL_PREFIX + '_') === 0;
+    name.indexOf('점수_') === 0 || name.indexOf('결시명단_') === 0;
 }
 // 시트마다 값과 지문을 한 번에 읽는다. 지문 확인과 스냅샷이 같은 값을 보도록 둘 다 여기서 만든다.
 // 날짜 칸은 문자열로 바꾼다 (google.script.run 은 Date 를 돌려줄 수 없다).
@@ -693,9 +557,9 @@ function studentResult_(ss, grade, cls, number, name) {
   }
 
   var cfg = getCfgMap_(ss);
-  // "수업 과목 설정"에서 이 학생의 학급 전체가 연결됐거나, 이 학생이 개별수강생으로 추가된 과목이 이 학생이 듣는 과목이다.
+  // "수업 과목 설정"에서 이 학생의 학급이 연결된 과목이 이 학생이 듣는 과목이다.
   var studentSubjects = getSubjects_(ss).filter(function (s) {
-    return isEnrolled_(s, grade, cls, number);
+    return hasClass_(s, grade, cls);
   });
   if (studentSubjects.length === 0) {
     return { ok: false, error: '이 학생에게 연결된 수업 과목이 아직 없습니다.' };
@@ -718,6 +582,7 @@ function studentResult_(ss, grade, cls, number, name) {
       }
     }
 
+    // 점수가 없는 영역: 같은 반에 점수가 있는 학생이 있으면 "미실시"(반은 이미 했음), 아무도 없으면 "예정"
     var domains = domainDefs.map(function (d) {
       var colIdx = scoreHeader.indexOf(d.name);
       var raw = (scoreRow && colIdx >= 0) ? scoreRow[colIdx] : '';
@@ -725,13 +590,11 @@ function studentResult_(ss, grade, cls, number, name) {
       var state;
       if (done) {
         state = 'done';
-      } else if (d.status === '이번 수행') {
-        state = 'current';
       } else {
-        var anyScored = colIdx >= 0 && scoreData.some(function (r) {
-          return String(r[0]) === subjectName && isScored_(r[colIdx]);
+        var classScored = colIdx >= 0 && scoreData.some(function (r) {
+          return String(r[0]) === subjectName && String(r[1]) === String(grade) && String(r[2]) === String(cls) && isScored_(r[colIdx]);
         });
-        state = anyScored ? 'notdone' : 'upcoming';
+        state = classScored ? 'notdone' : 'upcoming';
       }
       return { name: d.name, max: d.max, group: d.group, score: done ? Number(raw) : null, done: done, state: state };
     });
@@ -748,7 +611,6 @@ function studentResult_(ss, grade, cls, number, name) {
       fullMax: fullMax,
       declaredTotal: instance.declaredTotal || 0,
       doneCount: domains.filter(function (d) { return d.done; }).length,
-      currentCount: domains.filter(function (d) { return d.state === 'current'; }).length,
       notDoneCount: domains.filter(function (d) { return d.state === 'notdone'; }).length,
       upcomingCount: domains.filter(function (d) { return d.state === 'upcoming'; }).length,
       domainCount: domains.length
@@ -802,7 +664,7 @@ function issueQrCodes(password, subject, grade, cls) {
   try {
     var roster = ss.getSheetByName('명단');
     var students = roster.getRange(2, 1, Math.max(roster.getLastRow() - 1, 0), 4).getValues()
-      .filter(function (r) { return String(r[0]) === String(grade) && String(r[1]) === String(cls) && isEnrolled_(instance, grade, cls, r[2]); })
+      .filter(function (r) { return String(r[0]) === String(grade) && String(r[1]) === String(cls) && hasClass_(instance, grade, cls); })
       .sort(function (a, b) { return Number(a[2]) - Number(b[2]); });
     var open = {};
     qrRows_(ss).forEach(function (r) { if (qrMatches_(r, instance, grade, cls) && String(r[7]) === QR_OPEN) open[String(r[4])] = r; });
@@ -873,7 +735,7 @@ function getTeacherConfig(password) {
   var subjects = getSubjects_(ss).map(function (s) {
     return {
       id: s.id, name: s.name, declaredTotal: s.declaredTotal,
-      classPairs: s.classPairs, students: s.students, domains: getDomainsForSubject_(ss, s.id)
+      classPairs: s.classPairs, domains: getDomainsForSubject_(ss, s.id)
     };
   });
   return {
@@ -912,7 +774,7 @@ function saveSubjects(password, subjects) {
         return {
           name: String(s.name).trim(),
           declaredTotal: Number(s.declaredTotal) || 0, classPairs: s.classPairs || [],
-          id: String(s.id || '').trim() || Utilities.getUuid(), students: s.students || []
+          id: String(s.id || '').trim() || Utilities.getUuid()
         };
       })
       .filter(function (s) { return s.name; })
@@ -926,25 +788,13 @@ function saveSubjects(password, subjects) {
         return [s.name, s.declaredTotal, serializeClassPairs_(s.classPairs), s.id];
       }));
     }
-
-    // 개별수강생은 과목명마다 "출석명단_과목명" 시트에 (이름이 같은 과목은 한 시트에 모음)
-    var roster = ss.getSheetByName('명단');
-    var rosterRows = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
-    var enrollByName = {};
-    clean.forEach(function (s) {
-      var valid = s.students.filter(function (p) { return p && p.grade && p.cls && p.number; }).map(function (p) {
-        return { grade: String(p.grade), cls: String(p.cls), number: String(p.number) };
-      });
-      enrollByName[s.name] = (enrollByName[s.name] || []).concat(valid);
-    });
-    Object.keys(enrollByName).forEach(function (name) { writeEnrollSheet_(ss, name, enrollByName[name], rosterRows); });
     return { ok: true };
   } finally {
     lock.releaseLock();
   }
 }
 
-// 영역 정의(이름·배점·그룹·상태·급간)를 저장한다. 상태(완료/이번 수행/예정)는 그 과목을 듣는 모든 반에 똑같이 적용된다.
+// 영역 정의(이름·배점·그룹·급간)를 저장한다.
 function saveDomains(password, subjectId, domains) {
   var ss = ensureSheets_();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
@@ -953,26 +803,24 @@ function saveDomains(password, subjectId, domains) {
   try {
     var clean = domains
       .map(function (d) {
-        return {
-          name: String(d.name).trim(), max: Number(d.max) || 0, group: String(d.group || '').trim(), step: cleanStep_(d.step),
-          status: DOMAIN_STATUSES.indexOf(d.status) !== -1 ? d.status : '예정'
-        };
+        return { name: String(d.name).trim(), max: Number(d.max) || 0, group: String(d.group || '').trim(), step: cleanStep_(d.step) };
       })
       .filter(function (d) { return d.name; });
 
+    var cols = DOMAIN_HEADER.length;
     var domSheet = ss.getSheetByName('영역');
     var lastRow = domSheet.getLastRow();
-    if (domSheet.getMaxColumns() < 6) domSheet.insertColumnsAfter(domSheet.getMaxColumns(), 6 - domSheet.getMaxColumns());
-    var allRows = lastRow > 1 ? domSheet.getRange(2, 1, lastRow - 1, 6).getValues() : [];
+    if (domSheet.getMaxColumns() < cols) domSheet.insertColumnsAfter(domSheet.getMaxColumns(), cols - domSheet.getMaxColumns());
+    var allRows = lastRow > 1 ? domSheet.getRange(2, 1, lastRow - 1, cols).getValues() : [];
     var otherRows = allRows.filter(function (r) { return r[0] !== subjectId; });
-    var newRows = otherRows.concat(clean.map(function (d) { return [subjectId, d.name, d.max, d.group, d.status, d.step || '']; }));
+    var newRows = otherRows.concat(clean.map(function (d) { return [subjectId, d.name, d.max, d.group, d.step || '']; }));
 
     domSheet.clear();
-    domSheet.getRange(1, 1, 1, 6).setValues([DOMAIN_HEADER]);
+    domSheet.getRange(1, 1, 1, cols).setValues([DOMAIN_HEADER]);
     if (newRows.length) {
-      domSheet.getRange(2, 1, newRows.length, 6).setValues(newRows);
+      domSheet.getRange(2, 1, newRows.length, cols).setValues(newRows);
     }
-    applyDomainStatusValidation_(domSheet);
+    applyDomainStepValidation_(domSheet);
 
     // 그 과목의 점수 시트에 새로 생긴 영역명 컬럼만 추가한다 (기존 컬럼은 보존).
     var owner = getSubjects_(ss).filter(function (s) { return s.id === subjectId; })[0];
@@ -1005,7 +853,7 @@ function getClassScores(password, subject, grade, cls) {
   var roster = ss.getSheetByName('명단');
   var rosterData = roster.getRange(2, 1, Math.max(roster.getLastRow() - 1, 0), 4).getValues()
     .filter(function (r) {
-      return String(r[0]) === String(grade) && String(r[1]) === String(cls) && (!instance || isEnrolled_(instance, grade, cls, r[2]));
+      return String(r[0]) === String(grade) && String(r[1]) === String(cls) && (!instance || hasClass_(instance, grade, cls));
     })
     .sort(function (a, b) { return Number(a[2]) - Number(b[2]); });
 
@@ -1053,7 +901,7 @@ function getSubjectAverages(password, subject) {
     var domains = instance ? getDomainsForSubject_(ss, instance.id) : [];
     var numbers = {};
     rosterData.forEach(function (r) {
-      if (String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls) && (!instance || isEnrolled_(instance, p.grade, p.cls, r[2]))) {
+      if (String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls) && (!instance || hasClass_(instance, p.grade, p.cls))) {
         numbers[String(r[2])] = true;
       }
     });
@@ -1144,19 +992,6 @@ function saveClassScores(password, subject, grade, cls, students) {
   }
 }
 
-// 수업 과목 설정의 "이 과목을 수강하는 학생 추가하기" 검색용: 전 학년 명단
-function getRosterAll(password) {
-  var ss = ensureSheets_();
-  if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
-  var roster = ss.getSheetByName('명단');
-  var data = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
-  return {
-    students: sortByClassOrder_(data.filter(function (r) { return r[0] && r[3]; }), 0, 1, 2).map(function (r) {
-      return { grade: String(r[0]), cls: String(r[1]), number: String(r[2]), name: String(r[3]) };
-    })
-  };
-}
-
 // 학생 명단은 과목과 상관없이 학급(학년·반) 단위다.
 function getRosterForClass(password, grade, cls) {
   var ss = ensureSheets_();
@@ -1207,7 +1042,7 @@ function getAttendanceForClass(password, subject, grade, cls) {
   var roster = ss.getSheetByName('명단');
   var rosterData = roster.getRange(2, 1, Math.max(roster.getLastRow() - 1, 0), 4).getValues()
     .filter(function (r) {
-      return String(r[0]) === String(grade) && String(r[1]) === String(cls) && (!instance || isEnrolled_(instance, grade, cls, r[2]));
+      return String(r[0]) === String(grade) && String(r[1]) === String(cls) && (!instance || hasClass_(instance, grade, cls));
     })
     .sort(function (a, b) { return Number(a[2]) - Number(b[2]); });
 
@@ -1232,13 +1067,11 @@ function getAttendanceForClass(password, subject, grade, cls) {
   });
 
   var memos = instance ? readClassMemos_(ss, instance.id, grade, cls) : {};
-  var statuses = {}; // 영역 상태는 "영역" 시트 값 — 통계·메모 필터용으로 함께 돌려준다
-  domains.forEach(function (d) { statuses[d.name] = d.status; });
 
-  return { domains: domains, students: students, memos: memos, statuses: statuses };
+  return { domains: domains, students: students, memos: memos };
 }
 
-// memos: 그 반의 영역별 메모 { 영역명: 글 } — "영역메모" 시트에 저장된다. (영역 상태는 saveDomains 로 "영역" 시트에 저장)
+// memos: 그 반의 영역별 메모 { 영역명: 글 } — "영역메모" 시트에 저장된다.
 function saveAttendanceForClass(password, subject, grade, cls, students, memos) {
   var ss = ensureSheets_();
   if (!verifyPassword_(ss, password)) throw new Error('비밀번호가 올바르지 않습니다.');
@@ -1373,7 +1206,7 @@ function getAbsentees(password, subject) {
 }
 
 // 홈 화면 흐름 보드의 단계 카드에 보여줄 값을 과목마다 계산한다 (홈에서 과목 탭을 바꾸면 그 과목의 값을 보여준다).
-// subjects: [{ subject, absentPending: 결시로 표시된 항목 수, currentDomains: 지금 "이번 수행"인 영역 이름들 }]
+// subjects: [{ subject, absentPending: 결시로 표시된 항목 수 }]
 // 여러 반·영역을 한 번에 훑어야 해서 화면에서 여러 번 나눠 부르는 대신 여기서 한 번에 계산해 돌려준다.
 function getHomeStats(password) {
   var ss = ensureSheets_();
@@ -1386,7 +1219,7 @@ function getHomeStats(password) {
   var rosterData = roster.getLastRow() > 1 ? roster.getRange(2, 1, roster.getLastRow() - 1, 4).getValues() : [];
 
   return { subjects: names.map(function (name) {
-    var absentPending = 0, currentDomains = [];
+    var absentPending = 0;
     var book = readScores_(ss, name);
     var rowIndex = {};
     book.data.forEach(function (r, i) { rowIndex[r[1] + '-' + r[2] + '-' + r[3]] = i; });
@@ -1405,7 +1238,7 @@ function getHomeStats(password) {
       var domains = getDomainsForSubject_(ss, instance.id);
       var classNumbers = rosterData
         .filter(function (r) {
-          return String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls) && isEnrolled_(instance, p.grade, p.cls, r[2]);
+          return String(r[0]) === String(p.grade) && String(r[1]) === String(p.cls) && hasClass_(instance, p.grade, p.cls);
         })
         .map(function (r) { return String(r[2]); });
 
@@ -1419,17 +1252,9 @@ function getHomeStats(password) {
       });
     });
 
-    // 지금 진행 중("이번 수행")인 영역 — 같은 이름의 과목(학년별 ID)끼리 영역명이 같으면 한 번만
-    subjects.filter(function (s) { return s.name === name; }).forEach(function (s) {
-      getDomainsForSubject_(ss, s.id).forEach(function (d) {
-        if (d.status === '이번 수행' && currentDomains.indexOf(d.name) === -1) currentDomains.push(d.name);
-      });
-    });
-
     return {
       subject: name,
-      absentPending: absentPending,
-      currentDomains: currentDomains
+      absentPending: absentPending
     };
   }) };
 }

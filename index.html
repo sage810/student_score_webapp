@@ -24,6 +24,17 @@
     --radius-lg: 20px;
     --radius-md: 12px;
     --shadow-card: 0 4px 24px rgba(16,17,20,0.06);
+    /* 버튼·입력칸 상태용 토큰 — 정보부 업무 관리(info department/.design/design-tokens.css)와 같은 값 */
+    --purple-deep: #4533b5;                       /* 기본 버튼을 누르고 있을 때 */
+    --purple-tint-strong: rgba(133,91,251,0.20);  /* 연보라 버튼 hover */
+    --surface-alt: #fafafc;                       /* 보조 버튼 hover, 비활성 선택 상자 */
+    --neutral-fill: #f1f1f6;                      /* 탭 hover */
+    --border-ctl: #8f8fa0;                        /* 입력칸·선택 상자·보조 버튼 경계 (흰색 대비 3:1 이상) */
+    --red-dark: #a02033;                          /* 삭제 버튼 hover 글자, 누를 때 테두리 */
+    --radius-sm: 6px;
+    --radius-ctl: 10px;                           /* 버튼·입력칸 (토큰만 두고, 기존 모서리 값은 그대로) */
+    --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); /* 키보드 초점: 흰 2px + 먹색 2px */
+    --dur-fast: .15s;
   }
   *{ box-sizing:border-box; }
   html,body{ margin:0; padding:0; }
@@ -97,8 +108,6 @@
     display:flex; align-items:center; justify-content:center;
     transition: background .15s ease, color .15s ease;
   }
-  .tab-link:hover:not(.active){ background:#f1f1f6; color:var(--ink); }
-  .tab-link:focus-visible{ outline:2px solid var(--purple); outline-offset:2px; }
   .tab-link.active{ background:var(--purple); color:#fff; }
 
   .field{ margin-bottom:16px; }
@@ -108,20 +117,20 @@
 
   select, input[type="text"], .combo-btn{
     width:100%; padding:12px 16px; font-size:15px; font-family:inherit;
-    border:1.5px solid var(--border); border-radius: var(--radius-md);
+    border:1.5px solid var(--border-ctl); border-radius: var(--radius-md);
     background: var(--surface); color:var(--ink);
     appearance:none; -webkit-appearance:none;
-    transition: border-color .15s ease, box-shadow .15s ease;
+    transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
   }
   select, .combo-btn{
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M0 0l5 6 5-6z' fill='%23686b82'/></svg>");
     background-repeat:no-repeat; background-position: right 14px center;
     padding-right: 32px;
   }
-  select:disabled, .combo-btn:disabled{ color: var(--ink-faint); background-color:#fafafc; cursor:not-allowed; }
+  select:disabled, .combo-btn:disabled{ color: var(--ink-faint); background-color:var(--surface-alt); cursor:not-allowed; }
   select:focus, input:focus, .combo-btn:focus-visible{
     outline:none; border-color: var(--purple);
-    box-shadow: 0 0 0 3px var(--purple-tint);
+    box-shadow: var(--focus-ring);
   }
   input::placeholder{ color: var(--ink-faint); }
 
@@ -159,11 +168,7 @@
     font-family:inherit; color:#fff; background: var(--purple);
     border:none; border-radius: var(--radius-md); cursor:pointer;
     display:flex; align-items:center; justify-content:center; gap:8px;
-    transition: background .15s ease, transform .1s ease;
   }
-  .btn-primary:hover{ background: var(--purple-dark); }
-  .btn-primary:active{ transform: scale(0.99); }
-  .btn-primary:disabled{ opacity:.7; cursor:not-allowed; }
 
   .spinner{
     width:16px; height:16px; border-radius:50%;
@@ -178,7 +183,6 @@
     font-weight:600; color: var(--ink-soft); cursor:pointer; padding:8px 0;
     margin-bottom:12px;
   }
-  .btn-ghost:hover{ color: var(--purple); }
 
   .result-head{
     display:flex; flex-direction:column; align-items:center; gap:12px; margin-bottom:20px;
@@ -209,11 +213,9 @@
   /* 과목이 여러 개일 때: 옆으로 넘기는 카드 */
   .carousel-nav{ display:flex; align-items:center; justify-content:center; gap:14px; margin-bottom:6px; }
   .c-arrow{
-    width:34px; height:34px; border-radius:50%; border:1.5px solid var(--border); background: var(--surface);
+    width:34px; height:34px; border-radius:50%; border:1.5px solid var(--border-ctl); background: var(--surface);
     color: var(--ink); font-size:20px; line-height:1; cursor:pointer; font-family:inherit;
   }
-  .c-arrow:hover:not(:disabled){ border-color: var(--purple); color: var(--purple-dark); }
-  .c-arrow:disabled{ opacity:.35; cursor:not-allowed; }
   .c-dots{ display:flex; align-items:center; gap:8px; }
   .c-dot{
     width:8px; height:8px; padding:0; border:none; border-radius:999px; background:#d4d4de; cursor:pointer;
@@ -263,15 +265,6 @@
   .result-row.upcoming .d-name{ color: var(--ink-soft); }
   .result-row.upcoming .d-tag{ color: var(--purple-dark); }
 
-  .result-row.current{ background: var(--purple-tint); }
-  .result-row.current::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background: var(--purple); }
-  .result-row.current .d-name{ padding-left:16px; font-weight:800; color: var(--purple-dark); }
-  .result-row.current .d-score{ color: var(--purple-dark); }
-  .result-row.current .badge{
-    display:inline-block; margin-left:8px; font-size:12px; font-weight:800; color:#fff;
-    background: var(--purple); padding:2px 8px; border-radius:5px; vertical-align:middle;
-  }
-
   .total-card{
     background: linear-gradient(135deg, var(--purple), var(--purple-dark));
     border-radius: var(--radius-lg); padding:24px 24px;
@@ -292,9 +285,34 @@
   .stat .lbl{ font-size:12px; font-weight:700; color: var(--ink-soft); margin-top:2px; display:block; }
   .stat.done{ background: var(--purple-tint); }
   .stat.done .num{ color: var(--purple-dark); }
-  .stat.current .num{ color: var(--purple); }
   .stat.notdone .num{ color: var(--ink-soft); font-style:italic; }
   .stat.upcoming .num{ color: var(--ink-soft); }
+
+  /* ============ 버튼·입력칸 상호작용 — 정보부 업무 관리·교사 화면(teacher.html)과 같은 규칙 ============
+     역할: 기본 = .btn-primary(조회하기)   보조 = .c-arrow(과목 넘기기)   모양은 그대로 두고 상태만 = .btn-ghost(← 다시 조회) .tab-link
+     hover 는 마우스가 있는 기기에서만. 키보드 초점은 --focus-ring(흰 2px + 먹색 2px) 하나로 통일. 비활성은 .45.
+     (모션 줄이기 설정이면 맨 아래 전역 규칙이 전환 효과를 끈다) */
+  .btn-primary, .c-arrow, .btn-ghost{
+    transition: background var(--dur-fast), border-color var(--dur-fast), color var(--dur-fast), box-shadow var(--dur-fast), transform .06s;
+  }
+  .btn-ghost{ border-radius:var(--radius-sm); }
+  .btn-primary:focus-visible, .c-arrow:focus-visible, .btn-ghost:focus-visible, .tab-link:focus-visible{ outline:none; box-shadow:var(--focus-ring); }
+
+  /* 비활성. 조회 중(버튼 안 스피너가 보이는 동안)에는 흐리게 하지 않는다 */
+  .btn-primary:disabled, .c-arrow:disabled{ opacity:.45; cursor:not-allowed; }
+  .btn-primary:disabled:has(.spinner:not([hidden])){ opacity:1; cursor:progress; }
+
+  @media (hover:hover){
+    .btn-primary:hover:not(:disabled){ background:var(--purple-dark); }
+    .c-arrow:hover:not(:disabled){ border-color:var(--purple); color:var(--purple-dark); background:var(--surface-alt); }
+    .btn-ghost:hover{ color:var(--purple-dark); }
+    .tab-link:hover:not(.active){ background:var(--neutral-fill); color:var(--ink); }
+  }
+
+  /* 누르고 있을 때 */
+  .btn-primary:active:not(:disabled){ background:var(--purple-deep); box-shadow:inset 0 2px 4px rgba(0,0,0,.25); transform:translateY(1px); }
+  .c-arrow:active:not(:disabled){ border-color:var(--purple-dark); color:var(--purple-dark); background:var(--purple-tint); transform:translateY(1px); }
+  .btn-ghost:active{ color:var(--purple-deep); }
 
   .toast{
     position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
@@ -365,7 +383,7 @@
         </div>
         <div class="field">
           <label for="nameInput">이름 (선택)</label>
-          <input type="text" id="nameInput" placeholder="이름을 입력하세요 (비워도 돼요)" autocomplete="off" />
+          <input type="text" id="nameInput" placeholder="이름을 입력하세요" autocomplete="off" />
         </div>
         <p id="errorMsg" class="error-msg" hidden></p>
         <button type="submit" class="btn-primary" id="submitBtn">
@@ -444,12 +462,12 @@ function createMockRun(){
         domains:[
           {name:'청소년의 건강한 식생활 제안하기', group:'', max:20, score:18, done:true, state:'done'},
           {name:'나에게 어울리는 옷 디자인하기', group:'의복 디자인하기', max:16, score:15, done:true, state:'done'},
-          {name:'에코 수세미 제작하기', group:'의복 디자인하기', max:14, score:null, done:false, state:'current'},
+          {name:'에코 수세미 제작하기', group:'의복 디자인하기', max:14, score:null, done:false, state:'upcoming'},
           {name:'적정기술의 필요성 주장하기', group:'', max:20, score:null, done:false, state:'notdone'},
           {name:'발명품 계획하기', group:'기술적 문제 해결 및 발명품 기획 프로젝트', max:14, score:null, done:false, state:'upcoming'},
           {name:'발명품 제작하기', group:'기술적 문제 해결 및 발명품 기획 프로젝트', max:16, score:null, done:false, state:'upcoming'}
         ],
-        total:33, totalMax:36, fullMax:100, declaredTotal:100, doneCount:2, currentCount:1, notDoneCount:1, upcomingCount:2, domainCount:6
+        total:33, totalMax:36, fullMax:100, declaredTotal:100, doneCount:2, notDoneCount:1, upcomingCount:3, domainCount:6
       }]
     };
   }
@@ -668,7 +686,7 @@ function escapeHtml(str){
   });
 }
 
-var STATE_TAG = { current: '이번 수행', notdone: '미실시', upcoming: '예정' };
+var STATE_TAG = { notdone: '미실시', upcoming: '예정' };
 
 function buildResultListHtml(domains){
   var html = '<div class="col-header"><span>영역</span><span>나의 점수</span><span>만점</span></div>';
@@ -679,11 +697,9 @@ function buildResultListHtml(domains){
     }
     lastGroup = d.group || null;
 
-    var nameHtml = escapeHtml(d.name) + (d.state === 'current' ? '<span class="badge">이번 수행</span>' : '');
+    var nameHtml = escapeHtml(d.name);
     if (d.done){
       html += '<div class="result-row ' + d.state + '"><div class="d-name">' + nameHtml + '</div><div class="d-score">' + Number(d.score) + '</div><div class="d-max">' + Number(d.max) + '</div></div>';
-    } else if (d.state === 'current'){
-      html += '<div class="result-row ' + d.state + '"><div class="d-name">' + nameHtml + '</div><div class="d-score">-</div><div class="d-max">' + Number(d.max) + '</div></div>';
     } else {
       html += '<div class="result-row ' + d.state + '"><div class="d-name">' + nameHtml + '</div><div class="d-tag">' + STATE_TAG[d.state] + '</div></div>';
     }
@@ -694,7 +710,6 @@ function buildResultListHtml(domains){
 function buildStatRowHtml(s){
   var stats = [
     { cls:'done', label:'완료', count: s.doneCount },
-    { cls:'current', label:'이번 수행', count: s.currentCount },
     { cls:'notdone', label:'미실시', count: s.notDoneCount },
     { cls:'upcoming', label:'예정', count: s.upcomingCount }
   ].filter(function(st){
