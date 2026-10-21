@@ -661,7 +661,7 @@
   .sync-modal-empty{ padding:24px 16px; text-align:center; font-size:13px; color:var(--ink-soft); line-height:1.5; }
   .sync-modal-hint{ margin:12px 0 0; font-size:12.5px; color:var(--ink-soft); line-height:1.5; }
   .sync-modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:12px; flex-wrap:wrap; }
-  /* 학생 점수 조회 QR: 화면 미리보기(격자)와 인쇄용(A4 한 장 4×4, #noticePrintArea 에 그려 인쇄) */
+  /* 학생 점수 조회 QR: 화면 미리보기(격자)와 인쇄용(폼텍 QR-3990 라벨지 28칸, #noticePrintArea 에 그려 인쇄) */
   .qr-actions[hidden]{ display:none; }
   .qr-actions{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:center; margin-bottom:12px; }
   .qr-status{ font-size:12.5px; color:var(--ink-soft); margin:0 0 16px; min-height:1.2em; }
@@ -674,23 +674,21 @@
   .qr-card .qr-who{ font-size:12.5px; font-weight:600; color:var(--ink-soft); }
   .qr-card .qr-name{ font-size:14px; font-weight:800; }
   .qr-card .qr-hint{ display:none; }
-  .qr-page{
-    width:170mm; height:240mm; margin:0 auto; box-sizing:border-box;
-    display:grid; grid-template-columns:repeat(4, 1fr); grid-template-rows:repeat(4, 1fr);
-    break-after:page; page-break-after:always; background:#fff;
-  }
-  .qr-page:last-child{ break-after:auto; page-break-after:auto; }
+  /* 인쇄: 결시자 수행안내와 같은 폼텍 QR-3990 라벨지(.notice-page 격자, 40×40mm 28칸)에 한 칸씩.
+     칸: QR 25mm, 그 아래 과목 한 줄, 학년·반·번호와 이름 한 줄 (안내 문구는 칸에 안 들어가 뺀다) */
   .qr-cell{
-    box-sizing:border-box; border:0.3mm dashed #555; padding:2.5mm 2mm; overflow:hidden;
-    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1mm; text-align:center;
-    font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; color:#000; line-height:1.3;
+    width:40mm; height:40mm; box-sizing:border-box; padding:2.8mm 3mm; overflow:hidden;
+    display:flex; flex-wrap:wrap; justify-content:center; align-content:center; column-gap:1.5mm; row-gap:0.6mm; text-align:center;
+    font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; color:#000; line-height:1.2;
   }
-  .qr-cell.blank{ border-color:transparent; }
-  .qr-cell .qr-img{ width:30mm; height:30mm; }
-  .qr-cell .qr-subject{ font-size:8.5pt; }
-  .qr-cell .qr-who{ font-size:9.5pt; font-weight:700; }
-  .qr-cell .qr-name{ font-size:12pt; font-weight:800; }
-  .qr-cell .qr-hint{ font-size:6.5pt; color:#444; }
+  .qr-cell .qr-img{ width:25mm; height:25mm; flex:0 0 25mm; margin:0 6.5mm; }
+  .qr-cell .qr-subject{ flex:0 0 100%; font-size:7pt; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .qr-cell .qr-who{ font-size:7.5pt; font-weight:700; white-space:nowrap; align-self:baseline; }
+  .qr-cell .qr-name{ font-size:9pt; font-weight:800; white-space:nowrap; align-self:baseline; max-width:100%; overflow:hidden; text-overflow:ellipsis; }
+  /* 다섯 글자 이상인 이름은 한 줄에 안 들어가므로, 이름을 다음 줄로 내리고 그만큼 QR을 21mm로 줄인다 */
+  .qr-cell.qr-long .qr-img{ width:21mm; height:21mm; flex-basis:21mm; margin:0 8.5mm; }
+  .qr-cell.qr-long .qr-name{ flex:0 0 100%; }
+  .qr-cell .qr-hint{ display:none; }
   /* ============ 버튼·입력칸 상호작용 — 정보부 업무 관리(src/styles.css .btn·.field-input)와 같은 규칙 ============
      역할: 기본 = .btn-primary .gate-btn
            보조 = .btn-secondary .class-toggle .grade-tab .class-quick-btn .class-other-btn .topbar-sheet-btn
@@ -1282,7 +1280,7 @@
         <button class="btn-secondary" id="closeQrBtn" disabled>QR 코드 마감하기</button>
       </div>
       <div class="qr-preview" id="qrPreview" hidden></div>
-      <p class="subject-hint">A4 한 장에 4행×4열(16칸)로 나와요. 인쇄 창에서 "PDF로 저장"을 고르면 파일로도 남길 수 있어요. <br>같은 반에서 다시 "QR 생성하기"를 누르면 열려 있는 QR을 그대로 다시 보여주고, 마감한 뒤에 누르면 새 QR을 만들어요.</br></p>
+      <p class="subject-hint">폼텍 QR-3990 라벨지(A4 28칸)에 한 칸씩 나와요. 라벨 위치가 맞으려면 배율은 100%(기본값)로 두세요. 인쇄 창에서 "PDF로 저장"을 고르면 파일로도 남길 수 있어요. <br>같은 반에서 다시 "QR 생성하기"를 누르면 열려 있는 QR을 그대로 다시 보여주고, 마감한 뒤에 누르면 새 QR을 만들어요.</br></p>
     </div>
   </section>
 
@@ -3998,13 +3996,19 @@ document.getElementById('makeNoticePdfBtn').addEventListener('click', function()
     pages += '<div class="notice-page">' + cells.join('') + '</div>';
   }
   document.getElementById('noticePrintArea').innerHTML = pages;
-  // 인쇄 창은 화면을 덮어 안내가 가려지므로, 위쪽 카드에서 배율 안내를 먼저 보여 주고 [인쇄 창 열기]를 눌렀을 때 연다
+  showPrintGuide(this);
+});
+// 인쇄 창은 화면을 덮어 안내가 가려지므로, 위쪽 카드에서 배율 안내를 먼저 보여 주고 [인쇄 창 열기]를 눌렀을 때 연다.
+// 결시자 수행안내와 학생 점수 조회 QR이 함께 쓰고, 닫으면 누른 버튼으로 초점을 돌려준다.
+var printGuideOpener = null;
+function showPrintGuide(opener){
+  printGuideOpener = opener;
   document.getElementById('printGuideModal').hidden = false;
   document.getElementById('printGuideOkBtn').focus();
-});
+}
 function hidePrintGuide(){
   document.getElementById('printGuideModal').hidden = true;
-  document.getElementById('makeNoticePdfBtn').focus();
+  if (printGuideOpener) printGuideOpener.focus();
 }
 document.getElementById('printGuideOkBtn').addEventListener('click', function(){
   hidePrintGuide();
@@ -4105,6 +4109,7 @@ function qrSvg(text){
 // 카드 한 칸: 화면 미리보기(.qr-card)와 인쇄(.qr-cell)가 같은 내용을 쓴다
 function qrCardHtml(res, stu, cls){
   var link = qrLink(res.url, stu.token);
+  if (String(stu.name).length > 4) cls += ' qr-long';
   return '<div class="' + cls + '" data-token="' + escapeHtml(stu.token) + '" data-url="' + escapeHtml(link) + '">' +
     '<div class="qr-img">' + qrSvg(link) + '</div>' +
     '<div class="qr-subject">' + escapeHtml(res.subject) + '</div>' +
@@ -4146,18 +4151,17 @@ document.getElementById('makeQrBtn').addEventListener('click', function(){
     showToast('QR을 만들지 못했어요. 다시 시도해주세요.', true);
   }).issueQrCodes(TEACHER_PW, sel.subject, sel.grade, sel.cls);
 });
-// 인쇄: A4 한 장에 4×4. 결시자 수행안내와 같은 인쇄 영역을 쓴다.
+// 인쇄: 결시자 수행안내와 같은 폼텍 QR-3990 라벨지(28칸)·인쇄 영역·배율 안내 창을 쓴다.
 document.getElementById('printQrBtn').addEventListener('click', function(){
   if (!qrBatch) return;
   var pages = '';
-  for (var i = 0; i < qrBatch.students.length; i += 16){
-    var cells = qrBatch.students.slice(i, i + 16).map(function(stu){ return qrCardHtml(qrBatch, stu, 'qr-cell'); });
-    while (cells.length < 16) cells.push('<div class="qr-cell blank"></div>');
-    pages += '<div class="qr-page">' + cells.join('') + '</div>';
+  for (var i = 0; i < qrBatch.students.length; i += 28){
+    var cells = qrBatch.students.slice(i, i + 28).map(function(stu){ return qrCardHtml(qrBatch, stu, 'qr-cell'); });
+    while (cells.length < 28) cells.push('<div class="qr-cell blank"></div>');
+    pages += '<div class="notice-page">' + cells.join('') + '</div>';
   }
   document.getElementById('noticePrintArea').innerHTML = pages;
-  showToast('인쇄 창에서 "PDF로 저장"을 선택해주세요.');
-  setTimeout(function(){ window.print(); }, 150);
+  showPrintGuide(this);
 });
 document.getElementById('closeQrBtn').addEventListener('click', function(){
   var sel = qrSelection();
