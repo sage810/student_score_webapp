@@ -474,31 +474,36 @@
   .notice-item .ni-domain{ flex:1; min-width:0; font-weight:700; overflow-wrap:break-word; }
   .notice-item .ni-who{ flex-shrink:0; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
 
-  /* 결시자 수행안내 인쇄용 (A4 한 장 = 4×4칸). 화면에서는 숨기고 인쇄할 때만 보인다. */
+  /* 결시자 수행안내 인쇄용: 폼텍 QR-3990 라벨지(A4, 40×40mm 28칸 = 가로 4 × 세로 7)에 한 칸씩. 화면에서는 숨기고 인쇄할 때만 보인다.
+     라벨 위치(폼텍 공식 규격): 위 여백 7mm, 양쪽 여백 20.5mm, 가로 간격 43mm(라벨 40 + 틈 3), 세로 간격 40mm(틈 없음).
+     위치를 맞추려고 이 페이지만 용지 여백 0(@page notice3990)이고, 인쇄 창의 배율은 100%(기본값)여야 한다.
+     라벨이 이미 잘려 있어 칸 테두리는 그리지 않고, 프린터의 1~2mm 어긋남에 글자가 잘리지 않게 안쪽 여백을 둔다. */
   #noticePrintArea{ display:none; }
   .notice-page{
-    width:170mm; height:240mm; margin:0 auto; box-sizing:border-box;
-    display:grid; grid-template-columns:repeat(3, 1fr); grid-template-rows:repeat(3, 1fr);
+    page:notice3990;
+    width:210mm; height:296mm; margin:0; box-sizing:border-box; padding:7mm 0 0 20.5mm;
+    display:grid; grid-template-columns:repeat(4, 40mm); grid-template-rows:repeat(7, 40mm); column-gap:3mm; row-gap:0;
     break-after:page; page-break-after:always; background:#fff;
   }
   .notice-page:last-child{ break-after:auto; page-break-after:auto; }
   .notice-cell{
-    box-sizing:border-box; border:0.3mm dashed #555; padding:3.5mm 3mm;
-    display:flex; flex-direction:column; gap:1.6mm; overflow:hidden;
-    font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; color:#000; font-size:10pt; line-height:1.35;
+    width:40mm; height:40mm; box-sizing:border-box; padding:2.8mm 3mm;
+    display:flex; flex-direction:column; gap:0.4mm; overflow:hidden;
+    font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; color:#000; font-size:7pt; line-height:1.25;
   }
-  .notice-cell.blank{ border-color:transparent; }
-  .nc-row{ display:flex; gap:1.5mm; }
-  .nc-row .nc-k{ flex-shrink:0; font-weight:700; }
-  .nc-row .nc-v{ min-width:0; overflow-wrap:anywhere; }
-  .nc-badge{ font-weight:700; font-size:10.5pt; margin:0.5mm 0; }
-  .nc-memo{ overflow-wrap:anywhere; white-space:pre-line; }
+  .notice-cell > *{ flex-shrink:0; } /* 줄이 반만 보이게 눌리지 않게: 넘칠 수 있는 줄은 아래처럼 줄 수로 자른다 */
+  .nc-head{ overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; }
+  .nc-head .nc-subject{ font-weight:700; }
+  .nc-badge{ font-weight:700; font-size:7.5pt; margin:0.2mm 0; }
+  .nc-memo{ overflow-wrap:anywhere; white-space:pre-line; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; }
   .nc-date{ font-weight:700; }
-  .nc-line{ display:flex; gap:1.5mm; align-items:flex-end; }
-  .nc-line .nc-fill{ flex:1; min-width:0; min-height:4mm; border-bottom:0.2mm solid #000; overflow-wrap:anywhere; }
-  .nc-class{ margin-top:auto; font-weight:700; }
-  .nc-name{ font-size:16pt; font-weight:800; }
+  .nc-line{ display:flex; gap:1mm; align-items:flex-end; }
+  .nc-line .nc-fill{ flex:1; min-width:0; min-height:3.2mm; border-bottom:0.2mm solid #000; overflow-wrap:anywhere; }
+  .nc-who{ margin-top:auto; display:flex; flex-wrap:wrap; align-items:baseline; column-gap:1.5mm; }
+  .nc-class{ font-weight:700; }
+  .nc-name{ font-size:10pt; font-weight:800; line-height:1.15; }
   @media print{
+    @page notice3990{ size:A4 portrait; margin:0; }
     @page{ size:A4 portrait; margin:10mm; }
     html, body{ background:#fff !important; margin:0; padding:0; }
     body > *:not(#noticePrintArea){ display:none !important; }
@@ -633,6 +638,12 @@
     background:var(--surface); border-radius:var(--radius-lg); box-shadow:0 16px 48px rgba(16,17,20,0.25); padding:24px;
   }
   .sync-modal-card h3{ margin:0 0 4px; font-size:16px; font-weight:800; }
+  /* 인쇄 전 안내 카드(결시자 수행안내): 같은 창 모양을 화면 위쪽에 띄운다 */
+  .sync-modal.top{ align-items:flex-start; padding-top:max(24px, 6vh); }
+  .print-guide-card{ max-width:440px; }
+  .print-guide-body{ margin:8px 0 0; font-size:13.5px; line-height:1.6; color:var(--ink); word-break:keep-all; }
+  .print-guide-body p{ margin:0; }
+  .print-guide-body p + p{ margin-top:6px; color:var(--ink-soft); font-size:12.5px; }
   .sync-modal-sub{ margin:0 0 12px; font-size:12.5px; color:var(--ink-soft); }
   .sync-modal-sub:empty{ display:none; }
   .sync-modal-body{ flex:1 1 auto; min-height:0; overflow-y:auto; border:1px solid var(--border); border-radius:12px; padding:4px 0; }
@@ -1175,7 +1186,7 @@
     <button type="button" class="card-head-btn" data-section="notice">
       <span class="card-head-left">
         <h2><span class="step-no">7</span>결시자 수행안내</h2>
-        <span class="card-desc">결시로 체크된 학생의 수행 안내장을 A4 한 장에 3행×3열(9칸)로 만들어요.</span>
+        <span class="card-desc">결시로 체크된 학생의 수행 안내장을 폼텍 QR-3990 라벨지(A4 한 장 28칸, 40×40mm)에 맞춰 만들어요.</span>
       </span>
       <svg class="card-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1227,7 +1238,7 @@
           <span class="btn-label">PDF 만들기</span>
         </button>
       </div>
-      <p class="subject-hint">PDF 만들기를 누르면 인쇄 창이 열려요. 대상을 "PDF로 저장" 눌러주세요. 시간·장소를 비워두면 손으로 쓸 수 있게 빈 줄로 나와요.</p>
+      <p class="subject-hint">PDF 만들기를 누르면 인쇄 창이 열려요. 폼텍 QR-3990 라벨지에 바로 인쇄하거나 "PDF로 저장"을 고르세요. 라벨 위치가 맞으려면 배율은 100%(기본값)로 두세요. 시간·장소를 비워두면 손으로 쓸 수 있게 빈 줄로 나와요.</p>
     </div>
   </section>
 
@@ -1337,6 +1348,19 @@
     <div class="sync-modal-actions">
       <button type="button" class="btn-secondary" id="syncLaterBtn">나중에</button>
       <button type="button" class="btn-primary" id="syncApplyBtn">시트 내용 반영하기</button>
+    </div>
+  </div>
+</div>
+<div class="sync-modal top" id="printGuideModal" hidden>
+  <div class="sync-modal-card print-guide-card" role="dialog" aria-modal="true" aria-labelledby="printGuideTitle" aria-describedby="printGuideBody">
+    <h3 id="printGuideTitle">인쇄 전에 확인해 주세요</h3>
+    <div class="print-guide-body" id="printGuideBody">
+      <p>인쇄 창의 <b>배율</b>은 <b>100%(기본값)</b>로 두세요.</p>
+      <p>폼텍 QR-3990 라벨지(A4 28칸) 위치에 맞춰져 있어서, "페이지에 맞춤"처럼 배율을 바꾸면 라벨 칸과 어긋나요.</p>
+    </div>
+    <div class="sync-modal-actions">
+      <button type="button" class="btn-secondary" id="printGuideCancelBtn">취소</button>
+      <button type="button" class="btn-primary" id="printGuideOkBtn">인쇄 창 열기</button>
     </div>
   </div>
 </div>
@@ -3940,15 +3964,15 @@ function formatKoreanDate(str){
 
 function buildNoticeCell(r, subject, dateText, time, place, memo){
   return '<div class="notice-cell">' +
-    '<div class="nc-row"><span class="nc-k">과목</span><span class="nc-v">' + escapeHtml(subject) + '</span></div>' +
-    '<div class="nc-row"><span class="nc-k">수행영역</span><span class="nc-v">' + escapeHtml(noticeDomainLabel(r)) + '</span></div>' +
+    // 40×40mm 라벨 한 칸에 들어가게 과목·수행영역을 한 줄로, 학년·반·번호와 이름을 한 줄로 묶는다
+    '<div class="nc-head"><span class="nc-subject">' + escapeHtml(subject) + '</span> · ' + escapeHtml(noticeDomainLabel(r)) + '</div>' +
     '<div class="nc-badge">수행 안 본 사람</div>' +
     '<div class="nc-date">' + (dateText ? escapeHtml(dateText) : '&nbsp;&nbsp;&nbsp;&nbsp;년 &nbsp;&nbsp;월 &nbsp;&nbsp;일 &nbsp;&nbsp;요일') + '</div>' +
     '<div class="nc-line"><span>시간:</span><span class="nc-fill">' + escapeHtml(time) + '</span></div>' +
     '<div class="nc-line"><span>장소:</span><span class="nc-fill">' + escapeHtml(place) + '</span></div>' +
     (memo ? '<div class="nc-memo">' + escapeHtml(memo) + '</div>' : '') +
-    '<div class="nc-class">' + escapeHtml(r.grade) + '학년 ' + escapeHtml(r.cls) + '반 ' + escapeHtml(r.number) + '번</div>' +
-    '<div class="nc-name">' + escapeHtml(r.name) + '</div>' +
+    '<div class="nc-who"><span class="nc-class">' + escapeHtml(r.grade) + '학년 ' + escapeHtml(r.cls) + '반 ' + escapeHtml(r.number) + '번</span>' +
+    '<span class="nc-name">' + escapeHtml(r.name) + '</span></div>' +
   '</div>';
 }
 
@@ -3965,15 +3989,30 @@ document.getElementById('makeNoticePdfBtn').addEventListener('click', function()
   var place = document.getElementById('noticePlace').value.trim();
   var memo = document.getElementById('noticeMemo').value.trim();
 
+  // 폼텍 QR-3990 라벨지 한 장 = 28칸(가로 4 × 세로 7). 왼쪽 위부터 가로로 채운다.
   var pages = '';
-  for (var i = 0; i < rows.length; i += 9){
-    var cells = rows.slice(i, i + 9).map(function(r){ return buildNoticeCell(r, selectedNoticeSubject, dateText, time, place, memo); });
-    while (cells.length < 9) cells.push('<div class="notice-cell blank"></div>');
+  for (var i = 0; i < rows.length; i += 28){
+    var cells = rows.slice(i, i + 28).map(function(r){ return buildNoticeCell(r, selectedNoticeSubject, dateText, time, place, memo); });
+    while (cells.length < 28) cells.push('<div class="notice-cell blank"></div>');
     pages += '<div class="notice-page">' + cells.join('') + '</div>';
   }
   document.getElementById('noticePrintArea').innerHTML = pages;
-  showToast('인쇄 창에서 "PDF로 저장"을 선택해주세요.');
+  // 인쇄 창은 화면을 덮어 안내가 가려지므로, 위쪽 카드에서 배율 안내를 먼저 보여 주고 [인쇄 창 열기]를 눌렀을 때 연다
+  document.getElementById('printGuideModal').hidden = false;
+  document.getElementById('printGuideOkBtn').focus();
+});
+function hidePrintGuide(){
+  document.getElementById('printGuideModal').hidden = true;
+  document.getElementById('makeNoticePdfBtn').focus();
+}
+document.getElementById('printGuideOkBtn').addEventListener('click', function(){
+  hidePrintGuide();
   setTimeout(function(){ window.print(); }, 150);
+});
+document.getElementById('printGuideCancelBtn').addEventListener('click', hidePrintGuide);
+document.getElementById('printGuideModal').addEventListener('click', function(e){ if (e.target === this) hidePrintGuide(); });
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape' && !document.getElementById('printGuideModal').hidden) hidePrintGuide();
 });
 
 /* ---- 8. 학생 점수 조회 QR ---- */
