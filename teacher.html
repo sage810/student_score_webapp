@@ -488,12 +488,12 @@
   .notice-page:last-child{ break-after:auto; page-break-after:auto; }
   .notice-cell{
     width:40mm; height:40mm; box-sizing:border-box; padding:2.8mm 3mm;
-    display:flex; flex-direction:column; gap:0.4mm; overflow:hidden;
+    display:flex; flex-direction:column; gap:0.2mm; overflow:hidden;
     font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif; color:#000; font-size:7pt; line-height:1.25;
   }
   .notice-cell > *{ flex-shrink:0; } /* 줄이 반만 보이게 눌리지 않게: 넘칠 수 있는 줄은 아래처럼 줄 수로 자른다 */
-  .nc-head{ overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; }
-  .nc-head .nc-subject{ font-weight:700; }
+  .nc-subject{ font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.15; }
+  .nc-domain{ line-height:1.15; overflow-wrap:anywhere; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; }
   .nc-badge{ font-weight:700; font-size:7.5pt; margin:0.2mm 0; }
   .nc-memo{ overflow-wrap:anywhere; white-space:pre-line; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden; }
   .nc-date{ font-weight:700; }
@@ -3964,8 +3964,9 @@ function formatKoreanDate(str){
 
 function buildNoticeCell(r, subject, dateText, time, place, memo){
   return '<div class="notice-cell">' +
-    // 40×40mm 라벨 한 칸에 들어가게 과목·수행영역을 한 줄로, 학년·반·번호와 이름을 한 줄로 묶는다
-    '<div class="nc-head"><span class="nc-subject">' + escapeHtml(subject) + '</span> · ' + escapeHtml(noticeDomainLabel(r)) + '</div>' +
+    // 40×40mm 라벨 한 칸: 과목 한 줄, 그 아래 수행영역(최대 2줄), 학년·반·번호와 이름은 한 줄로 묶는다
+    '<div class="nc-subject">' + escapeHtml(subject) + '</div>' +
+    '<div class="nc-domain">' + escapeHtml(noticeDomainLabel(r)) + '</div>' +
     '<div class="nc-badge">수행 안 본 사람</div>' +
     '<div class="nc-date">' + (dateText ? escapeHtml(dateText) : '&nbsp;&nbsp;&nbsp;&nbsp;년 &nbsp;&nbsp;월 &nbsp;&nbsp;일 &nbsp;&nbsp;요일') + '</div>' +
     '<div class="nc-line"><span>시간:</span><span class="nc-fill">' + escapeHtml(time) + '</span></div>' +
